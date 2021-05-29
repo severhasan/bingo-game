@@ -16,3 +16,9 @@ interface StatusBarProps {
     bingoCount: number,
     reset: () => void,
 }
+
+type GameMode = 'single_player' | 'against_computer' | 'multiplayer';
+interface GameComponentProps {
+    gameMode: GameMode,
+    playerCount: number
+}

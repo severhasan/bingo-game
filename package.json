@@ -4,12 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "next build",
-    "nextdev": "next dev",
-    "next": "next",
-    "start": "next start -p $PORT",
+    "build:server": "tsc --project tsconfig.server.json",
+    "build:next": "next build",
+    "build": "npm run build:next && npm run build:server",
+    "next": "next dev",
     "server": "ts-node --project tsconfig.server.json src/server.ts",
-    "postinstall": "npm run build",
+    "start": "node dist/server.js",
+    "type-check": "tsc",
+    "tsc": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -25,6 +27,7 @@
   },
   "dependencies": {
     "express": "^4.17.1",
+    "helmet": "^4.6.0",
     "next": "^10.2.3",
     "react": "^17.0.2",
     "react-canvas-confetti": "^1.2.0",

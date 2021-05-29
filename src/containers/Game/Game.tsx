@@ -1,15 +1,17 @@
 import ReactCanvasConfetti from 'react-canvas-confetti';
 import BingoTable from '../../components/BingoTable/BingoTable';
 import StatusBar from '../../components/StatusBar/StatusBar';
+// import CSS from 'csstype';
 
 
 import { MOVIES, FREE_BINGO_TEXT } from '../../constants';
-import { useEffect, useState } from 'react';
+import { CSSProperties, useEffect, useState } from 'react';
 
 const MAX_ROUNDS = 20;
 const COUNTDOWN_TIME = 15000;
 const DRAW_ITEM_TIME = 3000;
-const canvasStyles = {
+
+const styles: CSSProperties = {
     position: 'fixed',
     pointerEvents: 'none',
     width: '100%',
@@ -37,9 +39,7 @@ const shuffleList = (arr: string[]) => {
 
 let animationInstance = null;
 
-const Game = ({ gameMode = 'single_player', gridCount = 25 }) => {
-    // movies are the items to be used in the Bingo game. In single player mode, the player will be given 48 items.
-    // these 48 items will be shuffled and added to the pouch/item container. In this way, it is guaranteed that the game will be won either way.
+const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProps) => {
     const [status, setStatus] = useState('not_started' as GameStatus)
     const [movies, setMovies] = useState([] as string[]);
     const [playerCard, setPlayerCard] = useState([] as string[]);
@@ -70,7 +70,7 @@ const Game = ({ gameMode = 'single_player', gridCount = 25 }) => {
             randomIndex = Math.round(Math.random() * (movies.length - 1));
         }
         randomItem = newMovies.splice(randomIndex, 1)[0];
-        
+
         setMovies(newMovies);
 
         setSelectedMovie(randomItem);
@@ -87,15 +87,16 @@ const Game = ({ gameMode = 'single_player', gridCount = 25 }) => {
     useEffect(() => {
         switch (status) {
             case 'game_starting':
-                const itemCount = gameMode === 'single_player' ? (gridCount - 1) : (gridCount - 1) * 2;
+                // this will ensure that the game is winnable by either side as slong as maximum rounds are kept are optimal
+                const itemCount = gameMode === 'single_player' ? 24 : playerCount * 24;
 
                 // shuffle movies so that it will not recieve the same items every round
                 const newMovies = shuffleList([...MOVIES]);
                 const movieList = newMovies.slice(0, itemCount);
 
                 const shuffledList = shuffleList([...movieList]);
-                const playerCard = shuffleList([...shuffledList.slice(0, 24)]); // update when the player card has bigger number of items
-                playerCard.splice(playerCard.length / 2, 0, FREE_BINGO_TEXT);
+                const playerCard = shuffleList([...shuffledList.slice(0, 24)]);
+                playerCard.splice(12, 0, FREE_BINGO_TEXT);
 
                 setMovies(shuffledList);
                 setPlayerCard(playerCard);
@@ -103,6 +104,7 @@ const Game = ({ gameMode = 'single_player', gridCount = 25 }) => {
                 break;
 
             case 'drawing_item':
+                setSelectedMovie(''); // the user should not be able to choose after timeout is cleared
                 setTimeout(drawItem, DRAW_ITEM_TIME);
                 break;
         }
@@ -131,8 +133,10 @@ const Game = ({ gameMode = 'single_player', gridCount = 25 }) => {
         // check for bingos
         checkBingos(newSelectedMovies);
     }
+
+    // all this code is to ensure that regardless of the grid size, we can check bingos, but apparently, bingo is played on 5x5 grids
     const checkBingos = (newSelectedMovies: string[]) => {
-        const count = Math.sqrt(gridCount);
+        const count = 5;
         const selectedMoviesIndice = newSelectedMovies.map(m => playerCard.indexOf(m));
         const possibleColumns = [];
         const possibleRows = [];
@@ -277,15 +281,10 @@ const Game = ({ gameMode = 'single_player', gridCount = 25 }) => {
                 </>
             }
 
-            <ReactCanvasConfetti refConfetti={getInstance} style={{
-                position: 'fixed',
-                pointerEvents: 'none',
-                width: '100%',
-                height: '100%',
-                top: 0,
-                left: 0,
-                // pointerEvents: 'none'
-            }} />
+            <ReactCanvasConfetti
+                refConfetti={getInstance}
+                style={styles}
+            />
         </div>
     )
 }
