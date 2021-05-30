@@ -19,6 +19,7 @@ function MyApp({Component}) {
           <Component />
         </div>
       </div>
+      <script src="/socket.io/socket.io.js"></script>
     </React.Fragment>
   );
 }

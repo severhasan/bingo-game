@@ -13,7 +13,7 @@ const StatusBar = ({ status, movie, remainingRounds, bingoCount, reset}: StatusB
         case 'drawing_item':
             statusMessage = 'Hold on! I am looking for a movie...';
             break;
-        case 'card_selected':
+        case 'item_selected':
             statusMessage = `Here is the movie:`;
             break;
     }
@@ -26,7 +26,7 @@ const StatusBar = ({ status, movie, remainingRounds, bingoCount, reset}: StatusB
             </div>
             <div>
                 <p className='status-message'>{statusMessage}</p>
-                {status === 'card_selected' && <p className='current-movie'>{movie}</p>}
+                {status === 'item_selected' && <p className='current-movie'>{movie}</p>}
             </div>
             <div>
                 {
@@ -35,9 +35,9 @@ const StatusBar = ({ status, movie, remainingRounds, bingoCount, reset}: StatusB
                 }
             </div>
             {
-                status === 'card_selected' &&
+                status === 'item_selected' &&
                 <div className='progress-bar'>
-                    <div className={`countdown ${status === 'card_selected' ? 'active' : ''}`}></div>
+                    <div className={`countdown ${status === 'item_selected' ? 'active' : ''}`}></div>
                 </div>
             }
         </div>

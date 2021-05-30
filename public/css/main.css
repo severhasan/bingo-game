@@ -47,6 +47,13 @@ p {
     color: white;
     text-align: center;
 }
+/* .nav .links {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+} */
 .nav a {
     color: inherit;
     text-decoration: none;
@@ -73,6 +80,10 @@ p {
     justify-content: center;
     text-align: center;
     align-items: center;
+    z-index: -1;
+}
+.game-start-container button:not(:first-of-type) {
+    margin-left: 40px;
 }
 .bingo-rules {
     margin-top: 100px;
@@ -168,6 +179,9 @@ p {
 .mt-40 {
     margin-top: 40px;
 }
+.ml-40 {
+    margin-left: 40px;
+}
 .flex {
     display: flex;
 }
@@ -184,6 +198,10 @@ p {
     box-shadow: none;
     color: white;
     border: 1px solid;
+}
+.btn a {
+    color: inherit;
+    text-decoration: none;
 }
 .btn-success {
     background-color: var(--button-success-bg-color);
@@ -212,5 +230,14 @@ p {
     }
     .game-status-bar .stats p {
         margin-left: 14px;
+    }
+
+    .game-start-container .buttons {
+        display: flex;
+        flex-direction: column;
+    }
+    .game-start-container button {
+        margin-left: 0px !important;
+        margin-top: 20px;
     }
 }

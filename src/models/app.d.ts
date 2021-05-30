@@ -1,5 +1,5 @@
 
-type GameStatus = 'not_started' | 'drawing_item' | 'card_selected' | 'game_starting' | 'game_finished';
+type GameStatus = 'not_started' | 'drawing_item' | 'item_selected' | 'game_starting' | 'game_finished';
 
 interface BingoTableProps {
     /** Grids will determine the number of grids a table has. This will make the game more customizable */

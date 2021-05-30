@@ -1,7 +1,7 @@
 import ReactCanvasConfetti from 'react-canvas-confetti';
 import BingoTable from '../../components/BingoTable/BingoTable';
 import StatusBar from '../../components/StatusBar/StatusBar';
-// import CSS from 'csstype';
+// import socket from '../../utils/Socket'
 
 
 import { MOVIES, FREE_BINGO_TEXT } from '../../constants';
@@ -40,7 +40,7 @@ const shuffleList = (arr: string[]) => {
 let animationInstance = null;
 
 const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProps) => {
-    const [status, setStatus] = useState('not_started' as GameStatus)
+    const [status, setStatus] = useState('game_starting' as GameStatus)
     const [movies, setMovies] = useState([] as string[]);
     const [playerCard, setPlayerCard] = useState([] as string[]);
     const [selectedMovie, setSelectedMovie] = useState('');
@@ -74,7 +74,7 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         setMovies(newMovies);
 
         setSelectedMovie(randomItem);
-        setStatus('card_selected');
+        setStatus('item_selected');
         if (movies.length - selectedMovies.length > 0) {
             const cd = setTimeout(() => {
                 setStatus('drawing_item');
@@ -240,46 +240,22 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
 
     return (
         <div>
-            {
-                status === 'not_started' &&
-                <div className='game-start-container'>
-                    <h1>Welcome to Bingo Game!</h1>
-                    <button onClick={() => setStatus('game_starting')} className='btn btn-primary'>
-                        Start New Game
-                    </button>
-
-                    <div className='bingo-rules'>
-                        <h2>Game Rules</h2>
-                        <ol className='text-left mt-10'>
-                            <li>Click on the movie that appears at the top of the screen</li>
-                            <li>Complete a row, column, or diagonal</li>
-                            <li>Do not forget about the time limit of 15 seconds for each round!</li>
-                        </ol>
-                    </div>
-
-                </div>
-            }
-            {
-                status !== 'not_started' &&
-                <>
-                    <div className='mt-40'>
-                        <StatusBar
-                            reset={reset}
-                            remainingRounds={remainingRounds}
-                            status={status}
-                            movie={selectedMovie}
-                            bingoCount={bingoCount}
-                        />
-                    </div>
-                    <div>
-                        <BingoTable
-                            playerCard={playerCard}
-                            selectedItems={selectedMovies}
-                            selectItem={selectItem}
-                        />
-                    </div>
-                </>
-            }
+            <div className='mt-40'>
+                <StatusBar
+                    reset={reset}
+                    remainingRounds={remainingRounds}
+                    status={status}
+                    movie={selectedMovie}
+                    bingoCount={bingoCount}
+                />
+            </div>
+            <div>
+                <BingoTable
+                    playerCard={playerCard}
+                    selectedItems={selectedMovies}
+                    selectItem={selectItem}
+                />
+            </div>
 
             <ReactCanvasConfetti
                 refConfetti={getInstance}
