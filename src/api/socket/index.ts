@@ -1,4 +1,4 @@
-import { MOVIES } from '../../constants';
+import { MOVIES, SOCKET_EVENTS, RANDOM_MOVIE_CHARACTERS } from '../../constants';
 
 const MAX_PLAYER_COUNT = 10;
 const FREE_BINGO_TEXT = 'FREE BINGO';
@@ -19,10 +19,16 @@ class Player {
     /** the matched items in the card */
     private matches: string[];
     private socketId: string;
+    private name: string;
 
-    constructor(card: string[], socketId: string) {
+    constructor(card: string[], socketId: string, name: string) {
         this.card = card;
         this.socketId = socketId;
+        this.name = name;
+    }
+
+    getName() {
+        return this.name;
     }
 
     addMatch(match: string) {
@@ -61,17 +67,19 @@ class Game {
     private stack: string[];
     /** the io instance of the server */
     io: any;
-    private creatorId: string;
+    private creatorSocketId: string;
     winner: Player;
     status: GameStatus;
     currentItem: string;
     /** id of timeout */
     countdown: NodeJS.Timeout;
+    timeoutDuration = COUNTDOWN_TIMEOUT;
 
-    constructor(io: any, roomId: string, creatorId: string, public stackSize: number) {
+    constructor(io: any, roomId: string, creatorSocketId: string, public stackSize: number, timeoutDuration = COUNTDOWN_TIMEOUT) {
         this.roomId = roomId;
         this.io = io;
-        this.creatorId = creatorId;
+        this.creatorSocketId = creatorSocketId;
+        this.timeoutDuration = timeoutDuration;
 
         const shuffledStack = this.shuffle(MOVIES);
         this.stack = shuffledStack.slice(0, this.stackSize);
@@ -81,7 +89,7 @@ class Game {
     reset() {
         const shuffledStack = this.shuffle(MOVIES);
         this.stack = shuffledStack.slice(0, this.stackSize);
-        this.startGame();
+        this.startGame(this.creatorSocketId);
 
         this.players.forEach(player => {
             player.reset(this.generateNewCard());
@@ -99,26 +107,44 @@ class Game {
         return this.io.of("/").adapter.rooms.get(this.roomId);
     }
 
+
+    /** get the list of player names */
+    getPlayers() {
+        return this.players.map(player => player.getName());
+    }
+
     /** add new player to the game */
-    addPlayer(socketId: string) {
+    addPlayer(socketId: string, name: string = '') {
         if (this.players.length >= MAX_PLAYER_COUNT) return;
 
+        let playerName = name;
+        if (!playerName) {
+            // filter out the character list so that not two names will appear in the list
+            const filteredCharacters = RANDOM_MOVIE_CHARACTERS.filter(name => !this.getPlayers().includes(name));
+            playerName = filteredCharacters[Math.round(Math.random() * filteredCharacters.length)];
+        }
+
         const newCard = this.generateNewCard();
-        const newPlayer = new Player(newCard, socketId);
+        const newPlayer = new Player(newCard, socketId, playerName);
         this.players.push(newPlayer);
 
-        // send the players' info to the sockets
-        // ...
+        return playerName;
+    }
+
+    /** remove the player from the game */
+    removePlayer(socketId: string) {
+        const playerIndex = this.players.findIndex(player => player.getSocketId() === socketId);
+        if (playerIndex >= 0) {
+            this.players.splice(playerIndex, 1);
+        }
     }
 
 
     /** set status and start the game on client side */
-    startGame() {
+    startGame(creatorSocketId: string) {
+        if (this.creatorSocketId !== creatorSocketId) return;
         this.status = 'drawing_item';
         setTimeout(this.drawItem, DRAW_ITEM_TIMEOUT);
-
-        // send sockets the status & message
-        // ...
     }
 
     drawItem() {
@@ -133,7 +159,7 @@ class Game {
         this.currentItem = randomItem;
         this.status = 'item_selected';
 
-        setTimeout(this.goNextRound, COUNTDOWN_TIMEOUT);
+        setTimeout(this.goNextRound, this.timeoutDuration);
 
         // send the item drawn to the players in the room
         // ...
@@ -154,7 +180,7 @@ class Game {
     goNextRound() {
         this.currentItem = '';
         clearTimeout(this.countdown);
-        
+
         if (!this.stack.length) return this.endGame();
         this.status = 'drawing_item';
 
@@ -198,40 +224,71 @@ class Game {
 
 
 
+// games' keys are roomIds
 const games: { [key: string]: Game } = {};
 
 const socketHandler = (socket: any, io: any) => {
-    // either with send()
-    socket.send("Hello!");
+    // const rooms = io.of("/").adapter.rooms;
 
-    socket.join('room1');
-    // socket.gameRoom = 'room1';
-    // console.log('socket', socket.rooms);
-    // console.log('socket', socket.gameRoom);
+    // create new game
+    socket.on(SOCKET_EVENTS.CREATE_NEW_GAME, (data: { playerName: string, stackSize: number }) => {
+        console.log(data.playerName);
 
-    const rooms = io.of("/").adapter.rooms;
-    // console.log('rooms:', rooms.get('room1'));
+        // create game & players, send back the status & message
+        const roomId = Date.now().toString(32) + (Math.random() * 1000000).toString(32);
+        console.log('room ID', roomId);
+        const newGame = new Game(io, roomId, socket.id, data.stackSize ?? 50);
+        const playerName = newGame.addPlayer(socket.id, data.playerName);
 
-    io.to('room1').emit("greetings", "Hey!", { roomSize: rooms.get('room1').size, "ms": "jane" }, Buffer.from([4, 3, 3, 1]))
+        socket.roomId = roomId;
+        socket.join(roomId);
 
-    // or with emit() and custom event names
-    // socket.emit("greetings", "Hey!", { "ms": "jane" }, Buffer.from([4, 3, 3, 1]));
+        io.to(roomId).emit(SOCKET_EVENTS.GAME_CREATED, { playerName, roomId });
 
-    // handle the event sent with socket.send()
-    socket.on("message", (data) => {
-        console.log(data);
+        games[roomId] = newGame;
     });
 
-    // handle the event sent with socket.emit()
-    socket.on("salutations", (elem1, elem2, elem3) => {
-        console.log(elem1, elem2, elem3);
+
+    // add another player into lobby
+    socket.on(SOCKET_EVENTS.JOIN_LOBBY, (data: { playerName: string, roomId: string }) => {
+        const game = games[data.roomId];
+        if (!game) {
+            io.to(socket.id).emit(SOCKET_EVENTS.LOBBY_NOT_FOUND);
+            return;
+        }
+        socket.join(data.roomId);
+        socket.roomId = data.roomId;
+        if (game.getPlayers().length < MAX_PLAYER_COUNT) {
+            game.addPlayer(socket.id, data.playerName);
+            const players = game.getPlayers();
+    
+            io.to(socket.id).emit(SOCKET_EVENTS.LOBBY_JOINED);
+            io.to(data.roomId).emit(SOCKET_EVENTS.SYNC_LOBBY, ({ players }));
+            return;
+        }
+        io.to(socket.id).emit(SOCKET_EVENTS.LOBBY_FULL);
     });
 
+
+    // disconnect the socket
     socket.on("disconnect", () => {
         console.log(socket.id, 'disconnected');
+
+        const game = games[socket.roomId];
         
-        // remove the game from the games if all users have disconnected
-        // ...
+        // remove the disconnected player from the game
+        if (game) {
+            game.removePlayer(socket.id);
+            io.to(socket.roomId).emit(SOCKET_EVENTS.SYNC_LOBBY, {players: game.getPlayers()});
+            
+            // if everyone has disconnected, delete the game instance
+            if (!game.getPlayers().length) {
+                // console.log('games', games);
+                console.log('everyone disconnected, disbanding the game');
+                delete games[socket.roomId];
+            }
+        }
+
     });
 }
 
