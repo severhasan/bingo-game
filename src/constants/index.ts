@@ -21,5 +21,8 @@ export const SOCKET_EVENTS = {
     LOBBY_NOT_FOUND: 'lobby_not_found',
     LOBBY_JOINED: 'lobby_joined',
     LOBBY_FULL: 'lobby_full',
-
+    PLAYER_READY: 'ready player one',
+    START_GAME: 'start_game',
+    STATUS_UPDATE: 'status_update',
+    SELECT_ITEM: 'select_item'
 }

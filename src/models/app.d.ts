@@ -20,5 +20,6 @@ interface StatusBarProps {
 type GameMode = 'single_player' | 'against_computer' | 'multiplayer';
 interface GameComponentProps {
     gameMode: GameMode,
-    playerCount: number
+    playerCount: number,
+    roomId?: string
 }

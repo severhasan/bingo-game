@@ -1,8 +1,8 @@
-
+import Game from '../../containers/Game/Game';
 
 const Page = () => (
     <div>
-        GAME ID
+        <Game playerCount={1} gameMode='multiplayer' />
     </div>
 )
 

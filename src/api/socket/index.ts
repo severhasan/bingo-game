@@ -17,9 +17,10 @@ class Player {
     /** the items (numbers or movie names) the player has on their card */
     private card: string[];
     /** the matched items in the card */
-    private matches: string[];
+    private matches: string[] = [];
     private socketId: string;
     private name: string;
+    isReady: boolean = false;
 
     constructor(card: string[], socketId: string, name: string) {
         this.card = card;
@@ -27,12 +28,18 @@ class Player {
         this.name = name;
     }
 
+    getCard() {
+        return this.card;
+    }
     getName() {
         return this.name;
     }
 
     addMatch(match: string) {
         this.matches.push(match);
+    }
+    setReady() {
+        this.isReady = true;
     }
 
     checkBingo() {
@@ -85,11 +92,16 @@ class Game {
         this.stack = shuffledStack.slice(0, this.stackSize);
     }
 
+    /** get creator id for validation */
+    getCreatorId() {
+        return this.creatorSocketId;
+    }
+
     /** reset the game if the players want to play again */
     reset() {
         const shuffledStack = this.shuffle(MOVIES);
         this.stack = shuffledStack.slice(0, this.stackSize);
-        this.startGame(this.creatorSocketId);
+        this.startGame();
 
         this.players.forEach(player => {
             player.reset(this.generateNewCard());
@@ -97,7 +109,7 @@ class Game {
     }
 
     generateNewCard() {
-        const newCard = this.shuffle([...this.stack]);
+        const newCard = this.shuffle([...this.stack]).slice(0,24);
         newCard.splice(12, 0, FREE_BINGO_TEXT);
         return newCard;
     }
@@ -139,12 +151,27 @@ class Game {
         }
     }
 
+    setPlayerReady(playerSocketId: string) {
+        const player = this.players.find((player) => player.getSocketId() === playerSocketId)
+        if (player) {
+            player.setReady();
+        }
+    }
+
+    allPlayersReady() {
+        return this.players.filter(player => player.isReady).length === this.players.length;
+    }
+
 
     /** set status and start the game on client side */
-    startGame(creatorSocketId: string) {
-        if (this.creatorSocketId !== creatorSocketId) return;
+    startGame() {
         this.status = 'drawing_item';
-        setTimeout(this.drawItem, DRAW_ITEM_TIMEOUT);
+        setTimeout(this.drawItem.bind(this), DRAW_ITEM_TIMEOUT);
+
+        // send each player their card info
+        this.players.forEach(player => {
+            this.io.to(player.getSocketId()).emit(SOCKET_EVENTS.STATUS_UPDATE, {status: this.status, currentItem: this.currentItem, isGameStarting: true, card: player.getCard() });
+        })
     }
 
     drawItem() {
@@ -159,14 +186,16 @@ class Game {
         this.currentItem = randomItem;
         this.status = 'item_selected';
 
-        setTimeout(this.goNextRound, this.timeoutDuration);
+        setTimeout(this.goNextRound.bind(this), this.timeoutDuration);
 
         // send the item drawn to the players in the room
         // ...
+        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, {status: this.status, currentItem: this.currentItem});
     }
 
     matchItem(match: string, socketId: string) {
-        if (this.currentItem !== match) return;
+        console.log('matchitem', match, socketId);
+        if (this.currentItem !== match || this.status !== 'item_selected') return;
 
         const player = this.players.find(player => player.getSocketId() === socketId);
         player.addMatch(match);
@@ -185,10 +214,11 @@ class Game {
         this.status = 'drawing_item';
 
 
-        this.countdown = setTimeout(this.drawItem, DRAW_ITEM_TIMEOUT);
+        this.countdown = setTimeout(this.drawItem.bind(this), DRAW_ITEM_TIMEOUT);
 
         // send the current status of the game to the sockets in the client side
         // ...
+        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, {status: this.status});
     }
 
     endGame() {
@@ -230,6 +260,11 @@ const games: { [key: string]: Game } = {};
 const socketHandler = (socket: any, io: any) => {
     // const rooms = io.of("/").adapter.rooms;
 
+    // handle the event sent with socket.send()
+    socket.on('message', (data) => {
+        console.log('message-hello', data);
+    })
+
     // create new game
     socket.on(SOCKET_EVENTS.CREATE_NEW_GAME, (data: { playerName: string, stackSize: number }) => {
         console.log(data.playerName);
@@ -263,12 +298,41 @@ const socketHandler = (socket: any, io: any) => {
             const players = game.getPlayers();
     
             io.to(socket.id).emit(SOCKET_EVENTS.LOBBY_JOINED);
-            io.to(data.roomId).emit(SOCKET_EVENTS.SYNC_LOBBY, ({ players }));
+            io.to(data.roomId).emit(SOCKET_EVENTS.SYNC_LOBBY, ({ players, creatorId: game.getCreatorId() }));
             return;
         }
         io.to(socket.id).emit(SOCKET_EVENTS.LOBBY_FULL);
     });
 
+    // triggers the events to start the game on the backend, starting the game will still require the connection (playerReady status) of all players on the game: '/game/roomId'
+    socket.on(SOCKET_EVENTS.START_GAME, () => {
+        console.log('received event to start multiplayer game');
+        console.log('roomid:', socket.roomId);
+        const game = games[socket.roomId];
+        if (socket.id !== game.getCreatorId()) return;
+
+        io.to(socket.roomId).emit(SOCKET_EVENTS.START_GAME, ({roomId: socket.roomId}));
+    });
+
+    socket.on(SOCKET_EVENTS.PLAYER_READY, () => {
+        console.log(socket.id, 'is ready');
+        const game = games[socket.roomId];
+        if (game) {
+            game.setPlayerReady(socket.id);
+    
+            if (game.allPlayersReady()) {
+                game.startGame();
+            }
+        }
+    });
+
+    socket.on(SOCKET_EVENTS.SELECT_ITEM, (data: {item: string}) => {
+        const game = games[socket.roomId];
+        console.log('select item server', data);
+        if (game) {
+            game.matchItem(data.item, socket.id);
+        }
+    });
 
     // disconnect the socket
     socket.on("disconnect", () => {

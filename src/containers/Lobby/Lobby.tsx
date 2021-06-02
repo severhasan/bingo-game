@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import socket from '../../utils/Socket';
 import { SOCKET_EVENTS, RANDOM_MOVIE_CHARACTERS } from '../../constants';
 
 
+
 const Lobby = () => {
+    const router = useRouter();
+
     const [roomId, setRoomId] = useState('');
     const [playerName, setPlayerName] = useState('');
     const [status, setStatus] = useState('' as 'created-new-game' | 'joined-a-game');
     const [players, setPlayers] = useState([] as string[]);
     const [message, setMessage] = useState('');
     const [randomName, setRandomName] = useState('');
+    const [isCreator, setCreator] = useState(false);
 
 
     useEffect(() => {
-
         if (!randomName) setRandomName(RANDOM_MOVIE_CHARACTERS[Math.round((Math.random() * 100))]);
         // if (!roomId) {
         //     socket.send('create-game');
@@ -25,12 +29,15 @@ const Lobby = () => {
             setStatus('created-new-game');
             setMessage('');
             setPlayers([data.playerName]);
+            setCreator(true);
         });
 
-        socket.on(SOCKET_EVENTS.SYNC_LOBBY, (data: { players: string[] }) => {
+        socket.on(SOCKET_EVENTS.SYNC_LOBBY, (data: { players: string[], creatorId: string }) => {
             console.log('update lobby:', data);
             setPlayers(data.players);
             setMessage('');
+            if (socket.id === data.creatorId) setCreator(true);
+            else setCreator(false);
         });
         socket.on(SOCKET_EVENTS.LOBBY_JOINED, () => {
             console.log('update joined');
@@ -46,7 +53,13 @@ const Lobby = () => {
             setMessage('Lobby is full. You will not be able to join :(');
         });
 
-        return () => { socket.disconnect() };
+        // this will trigger events to lead the players to game screen. Then the component/client will send "ready" message. When everyone is ready, the game will start.
+        socket.on(SOCKET_EVENTS.START_GAME, (data: {roomId: string}) => {
+            console.log('starting', data.roomId);
+            router.push(`game/${data.roomId}`);
+        });
+
+        // return () => { socket.disconnect() };
     }, [socket])
 
     const joinLobby = (e) => {
@@ -58,6 +71,11 @@ const Lobby = () => {
     const createNewGame = (e) => {
         e.preventDefault();
         socket.emit(SOCKET_EVENTS.CREATE_NEW_GAME, { playerName: playerName.trim() })
+    }
+
+    const startMultiplayerGame = () => {
+        console.log('sending event to start multiplayer game');
+        socket.emit(SOCKET_EVENTS.START_GAME);
     }
 
     return (
@@ -107,7 +125,7 @@ const Lobby = () => {
                                     onChange={(e) => setPlayerName(e.target.value)}
                                     value={playerName}
                                 />
-                                
+
                                 <button onClick={joinLobby} className='btn btn-primary mt-20'>Enter Game</button>
                             </div>
                         </form>
@@ -117,7 +135,12 @@ const Lobby = () => {
             {
                 status &&
                 <div>
-                    <h4> ROOM ID: {roomId} </h4>
+                    {
+                        isCreator && players.length >= 2 && <button onClick={startMultiplayerGame} className='btn btn-primary'>START GAME</button>
+                    }
+
+
+                    <h4 className='mt-40'> ROOM ID: {roomId} </h4>
                     <p>Share this room ID with your friends (Max players: 10)</p>
                     <div className='players'>
                         {
