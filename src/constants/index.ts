@@ -26,3 +26,10 @@ export const SOCKET_EVENTS = {
     STATUS_UPDATE: 'status_update',
     SELECT_ITEM: 'select_item'
 }
+
+
+export const PLAYER_ROLES: { [key: string]: { type: PlayerRole, displayName: string } } = {
+    support: { type: 'pollyanna', displayName: 'Pollyanna' },
+    sinister: { type: 'sinister', displayName: 'Sinister' },
+    lucky: { type: 'lucky', displayName: 'Lucky' }
+}

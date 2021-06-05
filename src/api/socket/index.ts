@@ -1,9 +1,21 @@
-import { MOVIES, SOCKET_EVENTS, RANDOM_MOVIE_CHARACTERS } from '../../constants';
+import { MOVIES, SOCKET_EVENTS, RANDOM_MOVIE_CHARACTERS, PLAYER_ROLES } from '../../constants';
 
 const MAX_PLAYER_COUNT = 10;
 const FREE_BINGO_TEXT = 'FREE BINGO';
 const DRAW_ITEM_TIMEOUT = 3000;
 const COUNTDOWN_TIMEOUT = 15000;
+const UNRELATED_ITEM_MULTIPLIER = 2;
+const MAX_SCORE = 100;
+const DEFAULT_GAME_SETTINGS: GameSettings = {
+    multipleBingos: false,
+    roles: false,
+    unrelatedItems: false,
+    timeoutDuration: COUNTDOWN_TIMEOUT,
+    uniqueCards: false,
+    uniqueSelection: false,
+    scoring: false,
+    maxRounds: 0
+}
 
 
 // since game is played 5x5, don't want to bother with the algorithm where the grid size might be different
@@ -13,6 +25,7 @@ const possibleRowBingos = [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 11, 12, 13, 14
 const possibleDiogonalBingos = [[4, 8, 12, 16, 20], [0, 6, 12, 18, 24]];
 const possibleBingoScenarios = [...possibleColumnBingos, ...possibleRowBingos, ...possibleDiogonalBingos];
 
+
 class Player {
     /** the items (numbers or movie names) the player has on their card */
     private card: string[];
@@ -20,19 +33,39 @@ class Player {
     private matches: string[] = [];
     private socketId: string;
     private name: string;
+    private status: PlayerStatus = 'healthy';
+    game: Game;
+    score = 0;
     isReady: boolean = false;
+    role: PlayerRole;
+    skillPoints = 3;
+    /** scores will keep the track of the scores for each round. Indices will indicate the round of the score */
+    scores: number[] = [];
 
-    constructor(card: string[], socketId: string, name: string) {
-        this.card = card;
+    constructor(socketId: string, name: string, game: Game) {
         this.socketId = socketId;
         this.name = name;
+        this.game = game;
     }
 
+    getName() {
+        return this.name;
+    }
     getCard() {
         return this.card;
     }
-    getName() {
-        return this.name;
+    getStatus() {
+        return this.status;
+    }
+
+    setCard(card: string[]) {
+        this.card = card;
+    }
+    setStatus(status: PlayerStatus) {
+        this.status = status;
+    }
+    setRole(role: PlayerRole) {
+        this.role = role;
     }
 
     addMatch(match: string) {
@@ -59,9 +92,60 @@ class Player {
         return this.socketId;
     }
 
+    // if selfheal is used before selecting an item, the player will be able to get more than MAX_SCORE. This is by the game design & player strategy.
+    addScore(score: number) {
+        this.scores.push(score);
+        this.score = this.scores.reduce((acc, score) => acc + score, 0);
+    }
+
     reset(card: string[]) {
         this.card = card;
         this.matches = [];
+    }
+}
+
+class Healer extends Player {
+    private heals: PlayerHeal[] = [];
+
+    constructor(socketId: string, name: string, game: Game) {
+        super(socketId, name, game);
+    }
+
+    healSelf(round: number) {
+        const currentScore = this.scores[round];
+        const heal: PlayerHeal = { type: 'self', score: 0, round };
+
+        if (currentScore === undefined) {
+            this.score += MAX_SCORE;
+            heal.score = MAX_SCORE;
+        } else {
+            this.score += MAX_SCORE - currentScore;
+            heal.score = MAX_SCORE - currentScore;
+        }
+        this.heals.push(heal);
+        this.skillPoints -= 1;
+    }
+    supportFriend(round: number, friendsScore: number) {
+        this.score += friendsScore;
+        this.heals.push({ round, score: friendsScore, type: 'friend' });
+    }
+}
+class Sinister extends Player {
+    private curses: PlayerCurse[] = [];
+    isGlobalSkillUsed: boolean = false;
+
+    addCurse(round: number, type: PlayerCurseType, influence: PlayerCurseInfluence) {
+        if (this.isGlobalSkillUsed && influence === 'global') return;
+
+        this.curses.push({ round, type, influence });
+    }
+}
+class Lucky extends Player {
+    private lucks: PlayerLuck[] = [];
+
+    // additional score may be added on heal :)
+    addLuck(round: number, type: PlayerLuckType, score = 0) {
+        this.lucks.push({ type, round, score });
     }
 }
 
@@ -72,24 +156,22 @@ class Game {
     private roomId: string;
     /** the (number/movie) list where the items will be picked from on each round */
     private stack: string[];
+    private creatorSocketId: string;
     /** the io instance of the server */
     io: any;
-    private creatorSocketId: string;
+    round = 0;
     winner: Player;
-    status: GameStatus;
+    status: GameStatus = 'not_started';
     currentItem: string;
     /** id of timeout */
     countdown: NodeJS.Timeout;
-    timeoutDuration = COUNTDOWN_TIMEOUT;
+    // game settings
+    settings: GameSettings = DEFAULT_GAME_SETTINGS;
 
-    constructor(io: any, roomId: string, creatorSocketId: string, public stackSize: number, timeoutDuration = COUNTDOWN_TIMEOUT) {
+    constructor(io: any, roomId: string, creatorSocketId: string) {
         this.roomId = roomId;
         this.io = io;
         this.creatorSocketId = creatorSocketId;
-        this.timeoutDuration = timeoutDuration;
-
-        const shuffledStack = this.shuffle(MOVIES);
-        this.stack = shuffledStack.slice(0, this.stackSize);
     }
 
     /** get creator id for validation */
@@ -100,7 +182,7 @@ class Game {
     /** reset the game if the players want to play again */
     reset() {
         const shuffledStack = this.shuffle(MOVIES);
-        this.stack = shuffledStack.slice(0, this.stackSize);
+        this.stack = shuffledStack.slice(0);
         this.startGame();
 
         this.players.forEach(player => {
@@ -109,7 +191,7 @@ class Game {
     }
 
     generateNewCard() {
-        const newCard = this.shuffle([...this.stack]).slice(0,24);
+        const newCard = this.shuffle([...this.stack]).slice(0, 24);
         newCard.splice(12, 0, FREE_BINGO_TEXT);
         return newCard;
     }
@@ -136,8 +218,7 @@ class Game {
             playerName = filteredCharacters[Math.round(Math.random() * filteredCharacters.length)];
         }
 
-        const newCard = this.generateNewCard();
-        const newPlayer = new Player(newCard, socketId, playerName);
+        const newPlayer = new Player(socketId, playerName, this);
         this.players.push(newPlayer);
 
         return playerName;
@@ -165,12 +246,22 @@ class Game {
 
     /** set status and start the game on client side */
     startGame() {
+        // handle the game stack, player cards and the items.
+        const shuffledStack = this.shuffle(MOVIES);
+        this.stack = shuffledStack.slice(0);
+        // this.stack = shuffledStack.slice(0, this.stackSize);
+
+        // generate new cards for each player and set their cards in accordance witht he game settings
+        // ...
+        const newCard = this.generateNewCard();
+
+        // start game & draw an item
         this.status = 'drawing_item';
         setTimeout(this.drawItem.bind(this), DRAW_ITEM_TIMEOUT);
 
         // send each player their card info
         this.players.forEach(player => {
-            this.io.to(player.getSocketId()).emit(SOCKET_EVENTS.STATUS_UPDATE, {status: this.status, currentItem: this.currentItem, isGameStarting: true, card: player.getCard() });
+            this.io.to(player.getSocketId()).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, currentItem: this.currentItem, isGameStarting: true, card: player.getCard() });
         })
     }
 
@@ -186,11 +277,11 @@ class Game {
         this.currentItem = randomItem;
         this.status = 'item_selected';
 
-        setTimeout(this.goNextRound.bind(this), this.timeoutDuration);
+        setTimeout(this.goNextRound.bind(this), this.settings.timeoutDuration);
 
         // send the item drawn to the players in the room
         // ...
-        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, {status: this.status, currentItem: this.currentItem});
+        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, currentItem: this.currentItem });
     }
 
     matchItem(match: string, socketId: string) {
@@ -207,10 +298,14 @@ class Game {
     }
 
     goNextRound() {
+        if (this.round >= this.settings.maxRounds || !this.stack.length) {
+            return this.endGame();
+        }
         this.currentItem = '';
+        this.round++;
         clearTimeout(this.countdown);
 
-        if (!this.stack.length) return this.endGame();
+
         this.status = 'drawing_item';
 
 
@@ -218,11 +313,30 @@ class Game {
 
         // send the current status of the game to the sockets in the client side
         // ...
-        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, {status: this.status});
+        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status });
     }
 
     endGame() {
         // end game & announce the winner
+    }
+
+
+    // settings related methods
+    setSettings(settings: GameSettings) {
+        this.settings = settings;
+    }
+    setMultipleBingos(value: boolean) {
+        if (this.status !== 'not_started') return;
+        this.settings.multipleBingos = value;
+    }
+    setRoles(value: boolean) {
+        this.settings.roles = value;
+    }
+    setTimeoutDuration(value: number) {
+        this.settings.timeoutDuration = value;
+    }
+    setUnrelatedItems(value: boolean) {
+        this.settings.unrelatedItems = value;
     }
 
 
@@ -272,7 +386,7 @@ const socketHandler = (socket: any, io: any) => {
         // create game & players, send back the status & message
         const roomId = Date.now().toString(32) + (Math.random() * 1000000).toString(32);
         console.log('room ID', roomId);
-        const newGame = new Game(io, roomId, socket.id, data.stackSize ?? 50);
+        const newGame = new Game(io, roomId, socket.id);
         const playerName = newGame.addPlayer(socket.id, data.playerName);
 
         socket.roomId = roomId;
@@ -296,7 +410,7 @@ const socketHandler = (socket: any, io: any) => {
         if (game.getPlayers().length < MAX_PLAYER_COUNT) {
             game.addPlayer(socket.id, data.playerName);
             const players = game.getPlayers();
-    
+
             io.to(socket.id).emit(SOCKET_EVENTS.LOBBY_JOINED);
             io.to(data.roomId).emit(SOCKET_EVENTS.SYNC_LOBBY, ({ players, creatorId: game.getCreatorId() }));
             return;
@@ -311,7 +425,7 @@ const socketHandler = (socket: any, io: any) => {
         const game = games[socket.roomId];
         if (socket.id !== game.getCreatorId()) return;
 
-        io.to(socket.roomId).emit(SOCKET_EVENTS.START_GAME, ({roomId: socket.roomId}));
+        io.to(socket.roomId).emit(SOCKET_EVENTS.START_GAME, ({ roomId: socket.roomId }));
     });
 
     socket.on(SOCKET_EVENTS.PLAYER_READY, () => {
@@ -319,14 +433,14 @@ const socketHandler = (socket: any, io: any) => {
         const game = games[socket.roomId];
         if (game) {
             game.setPlayerReady(socket.id);
-    
+
             if (game.allPlayersReady()) {
                 game.startGame();
             }
         }
     });
 
-    socket.on(SOCKET_EVENTS.SELECT_ITEM, (data: {item: string}) => {
+    socket.on(SOCKET_EVENTS.SELECT_ITEM, (data: { item: string }) => {
         const game = games[socket.roomId];
         console.log('select item server', data);
         if (game) {
@@ -339,12 +453,12 @@ const socketHandler = (socket: any, io: any) => {
         console.log(socket.id, 'disconnected');
 
         const game = games[socket.roomId];
-        
+
         // remove the disconnected player from the game
         if (game) {
             game.removePlayer(socket.id);
-            io.to(socket.roomId).emit(SOCKET_EVENTS.SYNC_LOBBY, {players: game.getPlayers()});
-            
+            io.to(socket.roomId).emit(SOCKET_EVENTS.SYNC_LOBBY, { players: game.getPlayers() });
+
             // if everyone has disconnected, delete the game instance
             if (!game.getPlayers().length) {
                 // console.log('games', games);

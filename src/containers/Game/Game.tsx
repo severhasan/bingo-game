@@ -269,7 +269,7 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
 
 
     return (
-        <div>
+        <div className='game-screen'>
             <div className='mt-40'>
                 <StatusBar
                     reset={reset}

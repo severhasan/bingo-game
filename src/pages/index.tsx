@@ -1,8 +1,57 @@
 import Game from '../containers/Game/Game';
 import Link from 'next/link';
 
-const Page = () => (
-    <div>
+
+
+const Page = () => {
+
+    return (
+        <div className='index'>
+            <div className='wrapper'>
+                <div className='game-modes' >
+                    <div className='card game-mode'>
+                        <h2>Single Player</h2>
+
+                        <p>You can play against the computer on 1v1!</p>
+                        <div className='buttons'>
+                            <Link href='/single-player'><a><button className='btn game-button'>Play</button></a></Link>
+                        </div>
+                    </div>
+                    <div className='mt-40 card game-mode'>
+                        <h2>Multiplayer</h2>
+
+                        <p>Multiplayer modes enables you to play with friends online. On top of that, you can configure your game into different settings and have a more dynamic game experience!</p>
+                        <div className='buttons'>
+                            <Link href='/game/create'><a><button className='btn game-button'>Create</button></a></Link>
+                            <Link href='/game/join'><a><button className='ml-20 btn game-button'>Join</button></a></Link>
+                        </div>
+                    </div>
+                </div>
+                <div className='demo'>
+                    <div className='game-container'>
+                        <Game gameMode='demo' playerCount={1} />
+                    </div>
+                </div>
+            </div>
+            <div className='footer'>
+                <div className='page'>
+                    <div className='main-container'>
+                        <div className='content'>
+                            <div>June, 2021</div>
+                            <div>Sensory Minds Demo</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+export default Page;
+
+
+const legacyPage = () => {
+    return (
         <div className='game-start-container'>
             <h1>Welcome to Bingo Game!</h1>
             <div className='buttons'>
@@ -27,7 +76,5 @@ const Page = () => (
             </div>
 
         </div>
-    </div>
-)
-
-export default Page;
+    )
+}
