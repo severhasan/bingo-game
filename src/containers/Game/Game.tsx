@@ -2,14 +2,15 @@ import ReactCanvasConfetti from 'react-canvas-confetti';
 import BingoTable from '../../components/BingoTable/BingoTable';
 import StatusBar from '../../components/StatusBar/StatusBar';
 import socket from '../../utils/Socket'
+import { useRouter } from 'next/router'
 
 
 import { MOVIES, FREE_BINGO_TEXT, SOCKET_EVENTS } from '../../constants';
 import { CSSProperties, useEffect, useState } from 'react';
 
-const MAX_ROUNDS = 20;
-const COUNTDOWN_TIME = 15000;
-const DRAW_ITEM_TIME = 3000;
+const MAX_ROUNDS = 48;
+const COUNTDOWN_TIME = 1000;
+const DRAW_ITEM_TIME = 200;
 
 const styles: CSSProperties = {
     position: 'fixed',
@@ -40,6 +41,8 @@ const shuffleList = (arr: string[]) => {
 let animationInstance = null;
 
 const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProps) => {
+    const router = useRouter();
+
     const [status, setStatus] = useState('game_starting' as GameStatus)
     const [movies, setMovies] = useState([] as string[]);
     const [playerCard, setPlayerCard] = useState([] as string[]);
@@ -48,8 +51,10 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
     const [countDown, setCountDown] = useState({} as any);
     const [bingoCount, setBingoCount] = useState(0);
     const [remainingRounds, setRemainingRounds] = useState(MAX_ROUNDS);
+    const [timeoutDuration, setTimeoutDuration] = useState(0);
     const [playerName, setPlayerName] = useState('');
     const [players, setPlayers] = useState([]);
+    const [winner, setWinner] = useState('');
 
 
     const reset = () => {
@@ -59,15 +64,21 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         setBingoCount(0);
         setCurrentItem('');
         setRemainingRounds(MAX_ROUNDS);
+
+        // write the better resetting logic.
+        if (gameMode === 'multiplayer') {
+            router.push('/');
+        }
     }
 
-    const drawItem = () => {
+    const drawItem = (movieList: string[] = []) => {
         // const moviesLeft = playerCard.filter(movie => ![selectedMovies, FREE_BINGO_TEXT].includes(movie));
-        if (!movies.length) return;
+        console.log('movies', movies, movieList);
+        if (!movies.length && !movieList.length) return;
 
         let randomItem = movies[0];
         let randomIndex = 0;
-        const newMovies = [...movies];
+        const newMovies = movies.length ? [...movies] : [...movieList];
         if (newMovies.length > 1) {
             randomIndex = Math.round(Math.random() * (movies.length - 1));
         }
@@ -80,60 +91,94 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         if (movies.length - selectedMovies.length > 0) {
             const cd = setTimeout(() => {
                 setStatus('drawing_item');
+                proceed('drawing_item');
             }, COUNTDOWN_TIME)
             setCountDown(cd);
         }
         setRemainingRounds(remainingRounds - 1);
+        // proceed('item_selected');
+    }
+
+    const proceed = (newStatus) => {
+        switch (newStatus) {
+            case 'game_starting':
+                // this will ensure that the game is winnable by either side as slong as maximum rounds are kept are optimal
+                // const itemCount = gameMode === 'single_player' ? 24 : playerCount * 24;
+                const itemCount = 48;
+
+                // shuffle movies so that it will not recieve the same items every round
+                const newMovies = shuffleList([...MOVIES]);
+                const movieList = newMovies.slice(0, itemCount);
+
+                const shuffledList = shuffleList([...movieList]);
+                const playerCard = shuffleList([...shuffledList.slice(0, 24)]);
+                playerCard.splice(12, 0, FREE_BINGO_TEXT);
+
+                setMovies(shuffledList);
+                setPlayerCard(playerCard);
+                proceed('drawing_item')
+                setStatus('drawing_item');
+                break;
+
+            case 'drawing_item':
+                setCurrentItem(''); // the user should not be able to choose after timeout is cleared
+                const movieArr = shuffleList([...MOVIES]);
+                setTimeout(() => drawItem(movieArr), DRAW_ITEM_TIME);
+                break;
+        }
     }
 
     useEffect(() => {
+        if (gameMode === 'multiplayer') {
+            // listen to the server & update game status or players
+            socket.on(SOCKET_EVENTS.STATUS_UPDATE, (data: { status: GameStatus, timeoutDuration: number, currentItem?: string, isGameStarting?: boolean, card?: string[], winner?: string, playerName: string }) => {
+                if (gameMode === 'multiplayer') {
+                    setStatus(data.status);
+
+                    if (data.playerName) {
+                        setPlayerName(data.playerName);
+                    }
+                    if (data.timeoutDuration) {
+                        setTimeoutDuration(data.timeoutDuration);
+                    }
+                    if (data.status === 'item_selected') {
+                        setCurrentItem(data.currentItem);
+                    }
+                    if (data.winner) {
+                        console.log('winner', data.winner);
+                        setWinner(data.winner);
+                        if (data.winner === playerName) {
+                            console.log('data.winner & playerName')
+                            console.log(data.winner, playerName);
+                        }
+                    }
+                    if (data.isGameStarting) {
+                        setPlayerCard(data.card);
+                        setMovies(data.card);
+                    }
+                }
+            });
+            socket.on(SOCKET_EVENTS.MATCH_UPDATE, (data: { matches: string[], bingoCount: number, newBingo: boolean }) => {
+                setSeletedMovies(data.matches);
+                if (data.newBingo) {
+                    fire();
+                }
+                if (data.bingoCount > bingoCount) {
+                    setBingoCount(data.bingoCount);
+                }
+            });
+
+            if (status === 'game_starting') {
+                // send info & receive game data (status, players, playerCount, cards etc...)
+                // ...
+                socket.emit(SOCKET_EVENTS.PLAYER_CONNECTED_TO_GAME);
+            }
+        }
         if (gameMode === 'single_player') {
-            switch (status) {
-                case 'game_starting':
-                    // this will ensure that the game is winnable by either side as slong as maximum rounds are kept are optimal
-                    const itemCount = gameMode === 'single_player' ? 24 : playerCount * 24;
-
-                    // shuffle movies so that it will not recieve the same items every round
-                    const newMovies = shuffleList([...MOVIES]);
-                    const movieList = newMovies.slice(0, itemCount);
-
-                    const shuffledList = shuffleList([...movieList]);
-                    const playerCard = shuffleList([...shuffledList.slice(0, 24)]);
-                    playerCard.splice(12, 0, FREE_BINGO_TEXT);
-
-                    setMovies(shuffledList);
-                    setPlayerCard(playerCard);
-                    setStatus('drawing_item');
-                    break;
-
-                case 'drawing_item':
-                    setCurrentItem(''); // the user should not be able to choose after timeout is cleared
-                    setTimeout(drawItem, DRAW_ITEM_TIME);
-                    break;
-            }
+            proceed('game_starting');
         }
 
-        // listen to the server & update game status or players
-        socket.on(SOCKET_EVENTS.STATUS_UPDATE, (data: { status: GameStatus, currentItem?: string, isGameStarting?: boolean, card?: string[] }) => {
-            if (gameMode === 'multiplayer') {
-                setStatus(data.status);
-                if (data.status === 'item_selected') {
-                    setCurrentItem(data.currentItem);
-                }
-                if (data.isGameStarting) {
-                    setPlayerCard(data.card);
-                    setMovies(data.card);
-                }
-            }
-        });
-
-        if (status === 'game_starting') {
-            // send info & receive game data (status, players, playerCount, cards etc...)
-            // ...
-            socket.emit(SOCKET_EVENTS.PLAYER_READY);
-        }
-
-    }, [status, socket]);
+    }, []);
 
     const selectItem = (item: string) => {
         if (selectedMovies.includes(item)) return;
@@ -270,27 +315,37 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
 
     return (
         <div className='game-screen'>
-            <div className='mt-40'>
-                <StatusBar
-                    reset={reset}
-                    remainingRounds={remainingRounds}
-                    status={status}
-                    movie={currentItem}
-                    bingoCount={bingoCount}
-                />
-            </div>
-            <div>
-                <BingoTable
-                    playerCard={playerCard}
-                    selectedItems={selectedMovies}
-                    selectItem={selectItem}
-                />
-            </div>
+            {
+                gameMode === 'demo' ?
+                <div>Placeholder - This section will be updated soon.</div>
+                :
+                <>
+                <div className='mt-40'>
+                    <StatusBar
+                        playerName={playerName}
+                        winner={winner}
+                        reset={reset}
+                        remainingRounds={remainingRounds}
+                        status={status}
+                        movie={currentItem}
+                        bingoCount={bingoCount}
+                        timeoutDuration={timeoutDuration}
+                    />
+                </div>
+                <div>
+                    <BingoTable
+                        playerCard={playerCard}
+                        selectedItems={selectedMovies}
+                        selectItem={selectItem}
+                    />
+                </div>
 
-            <ReactCanvasConfetti
-                refConfetti={getInstance}
-                style={styles}
-            />
+                <ReactCanvasConfetti
+                    refConfetti={getInstance}
+                    style={styles}
+                />
+                </>
+            }
         </div>
     )
 }

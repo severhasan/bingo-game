@@ -3,10 +3,9 @@ import { RANDOM_MOVIE_CHARACTERS } from '../../constants';
 import Settings from '../Settings/Settings';
 
 
-const CreateGame = ({ createNewGame }: { createNewGame: (event) => void }) => {
+const CreateGame = ({ settings, setSettings, createNewGame }: { settings: GameSettings, setSettings: (newSettings: GameSettings) => void, createNewGame: (event) => void }) => {
     const [playerName, setPlayerName] = useState('');
-    const [roomId, setRoomId] = useState('');
-    const [randomPlayerName, setRandomPlayerName] = useState(RANDOM_MOVIE_CHARACTERS[Math.round((Math.random() * 100))]);
+    const [randomPlayerName] = useState(RANDOM_MOVIE_CHARACTERS[Math.round((Math.random() * 100))]);
 
 
     return (
@@ -30,8 +29,8 @@ const CreateGame = ({ createNewGame }: { createNewGame: (event) => void }) => {
         <div className='mt-40 mb-40'>
             <h2>Settings</h2>
             <p className='note italic'>Hint: You can always update these settings on the Lobby screen.</p>
-            <Settings showDescription />
-        </div>
+            <Settings settings={settings} setSettings={setSettings} showDescription />
+        </div> 
 
         </div>
     )

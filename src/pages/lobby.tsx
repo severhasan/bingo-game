@@ -2,7 +2,7 @@ import Lobby from '../containers/Lobby/Lobby';
 
 const Page = () => (
     <div>
-        <Lobby />
+        <Lobby creator={false} />
     </div>
 )
 

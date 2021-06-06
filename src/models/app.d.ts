@@ -1,5 +1,5 @@
 
-type GameStatus = 'not_started' | 'drawing_item' | 'item_selected' | 'game_starting' | 'game_finished';
+type GameStatus = 'not_started' | 'role_selection' | 'drawing_item' | 'item_selected' | 'game_starting' | 'game_finished';
 type PlayerStatus = 'healthy' | 'stunned' | 'distorted';
 type PlayerRole = 'pollyanna' | 'sinister' | 'lucky';
 type PlayerCurseInfluence = 'global' | 'individual';
@@ -20,6 +20,10 @@ interface StatusBarProps {
     movie: string,
     bingoCount: number,
     reset: () => void,
+    /** since the duration of the rounds is now dynamic, we need to set it up every time */
+    timeoutDuration: number,
+    winner: string,
+    playerName: string,
 }
 
 type GameMode = 'demo' | 'single_player' | 'against_computer' | 'multiplayer';

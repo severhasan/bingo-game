@@ -21,15 +21,20 @@ export const SOCKET_EVENTS = {
     LOBBY_NOT_FOUND: 'lobby_not_found',
     LOBBY_JOINED: 'lobby_joined',
     LOBBY_FULL: 'lobby_full',
-    PLAYER_READY: 'ready player one',
     START_GAME: 'start_game',
     STATUS_UPDATE: 'status_update',
-    SELECT_ITEM: 'select_item'
+    MATCH_UPDATE: 'match_update',
+    SELECT_ITEM: 'select_item',
+    DISPLAY_ROLE_SELECTION: 'display_role_selection',
+    SELECT_ROLE: 'select_role',
+    REVEAL_ROLE: 'reveal_role',
+    PLAYER_CONNECTED_TO_GAME: 'player_connected_to_game',
+    PLAYER_READY: 'ready player one',
 }
 
 
 export const PLAYER_ROLES: { [key: string]: { type: PlayerRole, displayName: string } } = {
-    support: { type: 'pollyanna', displayName: 'Pollyanna' },
+    pollyanna: { type: 'pollyanna', displayName: 'Pollyanna' },
     sinister: { type: 'sinister', displayName: 'Sinister' },
     lucky: { type: 'lucky', displayName: 'Lucky' }
 }

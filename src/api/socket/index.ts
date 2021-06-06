@@ -2,6 +2,7 @@ import { MOVIES, SOCKET_EVENTS, RANDOM_MOVIE_CHARACTERS, PLAYER_ROLES } from '..
 
 const MAX_PLAYER_COUNT = 10;
 const FREE_BINGO_TEXT = 'FREE BINGO';
+// const DRAW_ITEM_TIMEOUT = 3000;
 const DRAW_ITEM_TIMEOUT = 3000;
 const COUNTDOWN_TIMEOUT = 15000;
 const UNRELATED_ITEM_MULTIPLIER = 2;
@@ -14,7 +15,7 @@ const DEFAULT_GAME_SETTINGS: GameSettings = {
     uniqueCards: false,
     uniqueSelection: false,
     scoring: false,
-    maxRounds: 0
+    maxRounds: 250
 }
 
 
@@ -30,13 +31,15 @@ class Player {
     /** the items (numbers or movie names) the player has on their card */
     private card: string[];
     /** the matched items in the card */
-    private matches: string[] = [];
+    private matches: string[] = [FREE_BINGO_TEXT];
     private socketId: string;
-    private name: string;
     private status: PlayerStatus = 'healthy';
+    name: string;
+    bingos: number = 0;
     game: Game;
     score = 0;
     isReady: boolean = false;
+    isConnected: boolean = false;
     role: PlayerRole;
     skillPoints = 3;
     /** scores will keep the track of the scores for each round. Indices will indicate the round of the score */
@@ -57,6 +60,9 @@ class Player {
     getStatus() {
         return this.status;
     }
+    getMatches() {
+        return this.matches;
+    }
 
     setCard(card: string[]) {
         this.card = card;
@@ -70,20 +76,39 @@ class Player {
 
     addMatch(match: string) {
         this.matches.push(match);
+        const newBingo = this.checkBingo(this.game.settings.multipleBingos);
+        this.game.io.to(this.socketId).emit(SOCKET_EVENTS.MATCH_UPDATE, { matches: this.matches, bingoCount: this.bingos, newBingo });
     }
     setReady() {
         this.isReady = true;
     }
+    setConnected() {
+        this.isConnected = true;
+    }
 
-    checkBingo() {
+
+    checkBingo(multiple: boolean) {
         const indices = this.matches.map(match => this.card.indexOf(match));
         let isBingo = false;
+        let bingoCount = 0;
         for (const scenario of possibleBingoScenarios) {
             const matchingIndices = indices.filter(i => scenario.includes(i));
             if (scenario.length === matchingIndices.length) {
-                isBingo = true;
-                break;
+                if (multiple) {
+                    bingoCount++;
+                } else {
+                    isBingo = true;
+                    break;
+                }
             }
+        }
+        if (multiple) {
+            const isNewBingo = bingoCount > this.bingos;
+            this.bingos = bingoCount;
+            return isNewBingo;
+        }
+        if (isBingo) {
+            this.bingos = 1;
         }
         return isBingo;
     }
@@ -163,15 +188,19 @@ class Game {
     winner: Player;
     status: GameStatus = 'not_started';
     currentItem: string;
+    /** role types of players. Each player will have one role */
+    playerRoles: PlayerRole[] = [];
     /** id of timeout */
     countdown: NodeJS.Timeout;
     // game settings
     settings: GameSettings = DEFAULT_GAME_SETTINGS;
+    isTesting: boolean = false;
 
-    constructor(io: any, roomId: string, creatorSocketId: string) {
+    constructor(io: any, roomId: string, creatorSocketId: string, settings: GameSettings) {
         this.roomId = roomId;
         this.io = io;
         this.creatorSocketId = creatorSocketId;
+        this.settings = settings;
     }
 
     /** get creator id for validation */
@@ -182,7 +211,7 @@ class Game {
     /** reset the game if the players want to play again */
     reset() {
         const shuffledStack = this.shuffle(MOVIES);
-        this.stack = shuffledStack.slice(0);
+        // this.stack = shuffledStack.slice(0);
         this.startGame();
 
         this.players.forEach(player => {
@@ -202,6 +231,11 @@ class Game {
     }
 
 
+    /** get player by their socket id */
+    getPlayer(socketId: string) {
+        const player = this.players.find(player => player.getSocketId() === socketId);
+        return player;
+    }
     /** get the list of player names */
     getPlayers() {
         return this.players.map(player => player.getName());
@@ -233,27 +267,93 @@ class Game {
     }
 
     setPlayerReady(playerSocketId: string) {
-        const player = this.players.find((player) => player.getSocketId() === playerSocketId)
+        const player = this.getPlayer(playerSocketId);
         if (player) {
             player.setReady();
+        }
+    }
+    setPlayerConnected(playerSocketId: string) {
+        const player = this.getPlayer(playerSocketId);
+        if (player) {
+            player.setConnected();
         }
     }
 
     allPlayersReady() {
         return this.players.filter(player => player.isReady).length === this.players.length;
     }
+    allPlayersConnected() {
+        this.players.forEach(p => { console.log(p.getSocketId(), p.isConnected) });
+        return this.players.filter(player => player.isConnected).length === this.players.length;
+    }
+
+    setPlayerRoles() {
+        this.status = 'role_selection';
+        const playerRoles = [];
+        let roles: PlayerRole[] = ['lucky', 'pollyanna', 'sinister'];
+        let count = 0;
+        while (count < this.players.length) {
+            let randomRole: PlayerRole;
+            if (roles.length === 0) {
+                roles = ['lucky', 'pollyanna', 'sinister'];
+            }
+            if (roles.length === 1) {
+                randomRole = roles[0];
+                roles = [];
+            } else {
+                const randomIndex = (Math.round(Math.random() * (roles.length - 1)));
+                randomRole = roles.splice(randomIndex, 1)[0];
+            }
+            playerRoles.push(randomRole);
+            count++
+        }
+        this.playerRoles = playerRoles;
+        this.io.to(this.roomId).emit(SOCKET_EVENTS.DISPLAY_ROLE_SELECTION, ({ playerCount: this.players.length }));
+        // this.io.to(this.roomId).emit(SOCKET_EVENTS.REVEAL_ROLE, ({ roomId: socket.roomId }));
+    }
+    setPlayerRole(socketId: string, index: number) {
+        const player = this.getPlayer(socketId);
+        const role = this.playerRoles[index];
+        player.setRole(role);
+
+        this.io.to(socketId).emit(SOCKET_EVENTS.REVEAL_ROLE, { role });
+    }
 
 
     /** set status and start the game on client side */
     startGame() {
+        console.log('game starting...');
+        if (!['not_started', 'role_selection'].includes(this.status)) return;
         // handle the game stack, player cards and the items.
         const shuffledStack = this.shuffle(MOVIES);
-        this.stack = shuffledStack.slice(0);
-        // this.stack = shuffledStack.slice(0, this.stackSize);
+        let stack = [];
 
         // generate new cards for each player and set their cards in accordance witht he game settings
-        // ...
-        const newCard = this.generateNewCard();
+        for (let i = 0; i < this.players.length; i++) {
+            let playerCard: string[];
+            if (this.settings.uniqueCards) {
+                playerCard = shuffledStack.slice((i * 24), (i + 1) * 24);
+            } else {
+                const newShuffle = this.shuffle([...MOVIES]);
+                playerCard = newShuffle.slice(0, 24);
+            }
+            // add free bingo
+            playerCard.splice(12, 0, FREE_BINGO_TEXT);
+            stack = [...stack, ...playerCard];
+            this.players[i].setCard(playerCard);
+        }
+
+        // currently, we do not want the stack to have unrelated items, so...
+        const stackSet = new Set(stack);
+        stackSet.delete(FREE_BINGO_TEXT);
+        this.stack = [...stackSet];
+
+        if (this.isTesting) {
+            this.stack = [...this.players[0].getCard().filter(item => item !== FREE_BINGO_TEXT), ...this.stack];
+        }
+
+        console.log('includes???', this.stack.includes(FREE_BINGO_TEXT));
+
 
         // start game & draw an item
         this.status = 'drawing_item';
@@ -261,23 +361,24 @@ class Game {
 
         // send each player their card info
         this.players.forEach(player => {
-            this.io.to(player.getSocketId()).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, currentItem: this.currentItem, isGameStarting: true, card: player.getCard() });
+            this.io.to(player.getSocketId()).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, currentItem: this.currentItem, isGameStarting: true, card: player.getCard(), playerName: player.getName(), timeoutDuration: this.settings.timeoutDuration });
         })
     }
 
     drawItem() {
+        console.log('drawing item', this.stack.length);
         if (!this.stack.length) return this.endGame();
 
         // technically, no need for randomness since it was already shuffled in the first place, and the player cards do not match the movile list, but yeah, why not...
         const newMovies = [...this.stack];
-        const randomIndex = Math.round(Math.random() * (this.stack.length - 1));
+        const randomIndex = this.isTesting ? 0 : Math.round(Math.random() * (this.stack.length - 1));
         const randomItem = newMovies[randomIndex];
 
         this.stack.splice(randomIndex, 1);
         this.currentItem = randomItem;
         this.status = 'item_selected';
 
-        setTimeout(this.goNextRound.bind(this), this.settings.timeoutDuration);
+        this.countdown = setTimeout(this.goNextRound.bind(this), this.settings.timeoutDuration);
 
         // send the item drawn to the players in the room
         // ...
@@ -288,27 +389,61 @@ class Game {
         console.log('matchitem', match, socketId);
         if (this.currentItem !== match || this.status !== 'item_selected') return;
 
-        const player = this.players.find(player => player.getSocketId() === socketId);
+        const player = this.getPlayer(socketId);
         player.addMatch(match);
-        if (player.checkBingo()) {
-            this.winner = player;
+
+        if (this.checkWinner()) {
             return this.endGame();
         }
-        this.goNextRound();
+
+        if (this.settings.uniqueSelection) {
+            return this.goNextRound();
+        }
+
+        const isAllChecked = this.checkAllRoundMatches(match);
+        if (!this.settings.uniqueSelection && isAllChecked) {
+            return this.goNextRound();
+        }
+    }
+    checkWinner() {
+        let winner: Player;
+        for (const player of this.players) {
+            // player.checkBingo(this.settings.multipleBingos);
+
+            console.log('settings & bingos', this.settings.multipleBingos, player.bingos);
+            if (!this.settings.multipleBingos && player.bingos) {
+                winner = player;
+                break;
+            }
+
+            if (player.getMatches().length === 25) {
+                winner = player;
+                break;
+            }
+        }
+        this.winner = winner;
+        return winner;
+    }
+    checkAllRoundMatches(item: string) {
+        let isAllChecked = true;
+        for (const player of this.players) {
+            if (player.getCard().includes(item) && !player.getMatches().includes(item)) {
+                isAllChecked = false;
+                break;
+            }
+        }
+        return isAllChecked;
     }
 
+    // add maxRound logic...
     goNextRound() {
-        if (this.round >= this.settings.maxRounds || !this.stack.length) {
-            return this.endGame();
-        }
+        // if (this.round >= this.settingsMaxRounds) ...
+        if (!this.stack.length) return this.endGame();
         this.currentItem = '';
         this.round++;
         clearTimeout(this.countdown);
 
-
         this.status = 'drawing_item';
-
-
         this.countdown = setTimeout(this.drawItem.bind(this), DRAW_ITEM_TIMEOUT);
 
         // send the current status of the game to the sockets in the client side
@@ -318,6 +453,16 @@ class Game {
 
     endGame() {
         // end game & announce the winner
+        console.log('ending game');
+        this.status = 'game_finished';
+        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, winner: this.winner.getName() });
+        // this.players.forEach(player => {
+        //     this.io.to(player.getSocketId()).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, winner: this.winner.getName() });
+        // });
+        this.stack = [];
+        this.players = [];
+        clearTimeout(this.countdown);
+        this.countdown = null;
     }
 
 
@@ -337,6 +482,11 @@ class Game {
     }
     setUnrelatedItems(value: boolean) {
         this.settings.unrelatedItems = value;
+    }
+
+    // FOR TESTING PURPOSES
+    setTesting() {
+        this.isTesting = true;
     }
 
 
@@ -380,19 +530,22 @@ const socketHandler = (socket: any, io: any) => {
     })
 
     // create new game
-    socket.on(SOCKET_EVENTS.CREATE_NEW_GAME, (data: { playerName: string, stackSize: number }) => {
+    socket.on(SOCKET_EVENTS.CREATE_NEW_GAME, (data: { playerName: string, settings: GameSettings }) => {
         console.log(data.playerName);
 
         // create game & players, send back the status & message
-        const roomId = Date.now().toString(32) + (Math.random() * 1000000).toString(32);
+        const roomId = Date.now().toString(32); // + (Math.random() * 1000000).toString(32);
         console.log('room ID', roomId);
-        const newGame = new Game(io, roomId, socket.id);
-        const playerName = newGame.addPlayer(socket.id, data.playerName);
+
+        // conver seconeds into milliseconds before setting the settings
+        const settings = { ...data.settings, timeoutDuration: data.settings.timeoutDuration * 1000 };
+        const newGame = new Game(io, roomId, socket.id, settings);
+        const playerName = newGame.addPlayer(socket.id, data.playerName.trim());
 
         socket.roomId = roomId;
         socket.join(roomId);
 
-        io.to(roomId).emit(SOCKET_EVENTS.GAME_CREATED, { playerName, roomId });
+        io.to(roomId).emit(SOCKET_EVENTS.GAME_CREATED, { playerName, roomId, settings: data.settings });
 
         games[roomId] = newGame;
     });
@@ -419,22 +572,46 @@ const socketHandler = (socket: any, io: any) => {
     });
 
     // triggers the events to start the game on the backend, starting the game will still require the connection (playerReady status) of all players on the game: '/game/roomId'
-    socket.on(SOCKET_EVENTS.START_GAME, () => {
+    socket.on(SOCKET_EVENTS.START_GAME, (data: { settings: GameSettings }) => {
         console.log('received event to start multiplayer game');
         console.log('roomid:', socket.roomId);
         const game = games[socket.roomId];
         if (socket.id !== game.getCreatorId()) return;
 
-        io.to(socket.roomId).emit(SOCKET_EVENTS.START_GAME, ({ roomId: socket.roomId }));
+        // set player roles & send clients their roles
+        if (game.settings.roles) {
+            game.setPlayerRoles()
+        } else {
+            // the settings might have been changd in the lobby
+            const newSettings: GameSettings = { ...data.settings, timeoutDuration: data.settings.timeoutDuration * 1000 };
+            game.setSettings(newSettings);
+            io.to(socket.roomId).emit(SOCKET_EVENTS.START_GAME, ({ roomId: socket.roomId }));
+        }
     });
 
+    // player ready will only be used for when roles are enabled
     socket.on(SOCKET_EVENTS.PLAYER_READY, () => {
-        console.log(socket.id, 'is ready');
+        // console.log(socket.id, 'is ready');
         const game = games[socket.roomId];
-        if (game) {
+        if (game && game.settings.roles) {
             game.setPlayerReady(socket.id);
 
             if (game.allPlayersReady()) {
+                // game.startGame();
+                // this will start game on front-end, and when everyone connects, the game will start.
+                io.to(socket.roomId).emit(SOCKET_EVENTS.START_GAME, ({ roomId: socket.roomId }));
+            }
+        }
+    });
+    // player will be directed to game/game_id page & when everyone has connected, game should start
+    socket.on(SOCKET_EVENTS.PLAYER_CONNECTED_TO_GAME, () => {
+        console.log(socket.id, 'has connected');
+        const game = games[socket.roomId];
+        if (game) {
+            game.setPlayerConnected(socket.id);
+
+            if (game.allPlayersConnected()) {
+                // game.setTesting();
                 game.startGame();
             }
         }
@@ -457,14 +634,20 @@ const socketHandler = (socket: any, io: any) => {
         // remove the disconnected player from the game
         if (game) {
             game.removePlayer(socket.id);
-            io.to(socket.roomId).emit(SOCKET_EVENTS.SYNC_LOBBY, { players: game.getPlayers() });
+            if (game.getPlayers().length === 1 && game.status !== 'not_started') {
+                console.log('everyone disconnected, ending the game');
+                game.endGame();
+            }
 
             // if everyone has disconnected, delete the game instance
             if (!game.getPlayers().length) {
                 // console.log('games', games);
+                game.endGame();
                 console.log('everyone disconnected, disbanding the game');
                 delete games[socket.roomId];
             }
+            io.to(socket.roomId).emit(SOCKET_EVENTS.SYNC_LOBBY, { players: game.getPlayers() });
+
         }
 
     });

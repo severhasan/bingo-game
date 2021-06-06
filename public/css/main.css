@@ -24,6 +24,7 @@
     --main-red: rgb(143, 31, 64);
     /* --countdown-color: yellowgreen; */
     --countdown-color: dodgerblue;
+    --transparent-dark: rgba(0, 0, 0, .8);
 }
 /* darkslateblue, indigo, rebeccapurple, steelblue cadetblue,  coral, firebrik, darkred, */
 /* HTML & Body */
@@ -64,7 +65,19 @@ p {
 .w-100 {
     width: 100%;
 }
-
+.input.plain {
+    margin: 0;
+    padding: 0;
+    background-color: inherit;
+    font-size: 1em;
+    border: none;
+    outline: none;
+    width: 100px;
+}
+h2.room-title {
+    margin: 0;
+    padding: 0;
+}
 
 /* Navigation */
 .nav {
@@ -122,8 +135,10 @@ p {
     height: 40vw; */
 }
 .index .demo .game-container {
-    margin-top: -120px;
+    /* margin-top: -120px; */
+    margin-top: -90px;
     transform: scale(.8);
+    border: 2px dashed lightgray;
 }
 .game-modes {
     position: relative;
@@ -170,11 +185,15 @@ p {
 }
 .game-button {
     /* background-color: yellowgreen; */
-    /* color: black; */
+    color: white;
     background-color: var(--main-red);
     border-color: var(--main-red) !important;
     font-size: 1.4em;
     box-shadow: -1px 4px 6px 1px rgba(31, 6, 14, 0.3) !important;
+}
+.game-button.small {
+    font-size: 1em;
+    padding: 6px;
 }
 
 @media screen and (max-width: 720px) {
@@ -292,6 +311,7 @@ p {
 .bingo-table .item.free-card {
     background-color: white;
     color: var(--table-hover-color);
+    text-decoration: none;
 }
 .bingo-table .item:not(.free-card):hover {
     /* color: white; */
@@ -380,6 +400,7 @@ p {
 .flex-center {
     display: flex;
     justify-content: center;
+    align-items: center;
 }
 .flex-column {
     display: flex;
@@ -402,7 +423,7 @@ p {
     padding: 10px;
     border-radius: 4px;
     box-shadow: none;
-    color: white;
+    /* color: white; */
     border: 1px solid;
 }
 .btn a {
@@ -439,17 +460,16 @@ p.note {
 
 /* LOBBY */
 .lobby {
-    /* position: absolute;
-    top: 0;
-    left: 0; */
     width: 100%;
-    /* height: 100vh; */
     display: flex;
     flex-direction: column;
     justify-content: center;
     justify-items: center;
     text-align: center;
     z-index: -1;
+}
+.lobby .creator-action-button {
+    height: 45px;
 }
 .lobby h1 {
     margin-bottom: 40px;
@@ -468,15 +488,50 @@ p.note {
     /* outline: 2px solid var(--main-red); */
 }
 .lobby .players {
-    color: steelblue;
+    /* color: steelblue; */
+    color: var(--main-red);
     font-weight: 600;
+    font-size: 1.2em;
 }
-/* .lobby p.note {
-    color: gray;
-    font-size: .8em;
-} */
 .lobby input.range {
     width: 200px;
+}
+.lobby .icon {
+    height: 20px;
+    width: 20px;
+    cursor: pointer;
+    position: relative;
+}
+.lobby .icon:hover .legend-tooltip {
+    display: flex;
+}
+
+.lobby .settings-sidebar {
+    position: absolute;
+    right: 0;
+    top: 20vh;
+    width: 480px;
+    height: 100%;
+    max-height: 70vh;
+    overflow-x: hidden;
+    visibility: hidden;
+}
+.lobby .settings-sidebar.open {
+    visibility: visible;
+}
+.lobby .settings-sidebar .wrapper {
+    position: relative;
+}
+.lobby .settings-sidebar .wrapper .settings-container {
+    /* width: 100%; */
+    width: 480px;
+    position: absolute;
+    top: 0;
+    right: -480px;
+    transition: all 300ms ease-out;
+}
+.lobby .settings-sidebar .wrapper.open .settings-container {
+    right: 0;
 }
 
 @media screen and (max-width: 720px) {
@@ -507,6 +562,34 @@ p.note {
         margin-left: 0px !important;
         margin-top: 20px;
     }
+    .lobby .settings-sidebar {
+        position: relative;
+        width: 100%;
+        margin: 0;
+        top: 0;
+        height: auto;
+        max-height: 100%;
+    }
+    .lobby .settings-sidebar .wrapper {
+        overflow-y: hidden;
+    }
+    .lobby .settings-sidebar .wrapper.open {
+        overflow-y: auto;
+    }
+    .lobby .settings-sidebar .wrapper .settings-container {
+        opacity: 0;
+        margin-top: 200px;
+        position: relative;
+        width: 100%;
+        right: inherit;
+        transition: all 300ms ease-out;
+        height: 0;
+    }
+    .lobby .settings-sidebar .wrapper.open .settings-container {
+        opacity: 1;
+        margin: 0;
+        height: 100%;
+    }
 }
 
 
@@ -534,7 +617,6 @@ p.note {
     right: 8px;
     top: 2px;
     vertical-align: middle;
-    /* top: 10px; */
     transition: all ease-out;
 }
 .switch.active .container::after {
@@ -602,9 +684,135 @@ p.note {
     align-items: center;
 }
 
+.settings .close {
+    color: var(--main-red);
+    background-color: white;
+    padding: 5px 9px;
+    border-radius: 50%;
+    display: inline-block;
+    cursor: pointer;
+}
+
 @media screen and (max-width: 720px) {
     .settings .col2.flex-column {
         justify-content: flex-start;
         margin-top: 18px;
     }
+
+}
+
+
+
+/* Tooltip */
+.tooltip-container {
+    /* position: relative; */
+    position: absolute;
+    left: -50px;
+    margin-bottom: 0px;
+    min-width: 120px;
+}
+
+.legend-tooltip {
+    display: none;
+    font-size: 12px;
+    background-color: var(--transparent-dark);
+    color: white;
+    position: absolute;
+    bottom: 34px;
+    z-index: 999;
+    max-width: 400px;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.legend-tooltip.show {
+    display: block;
+}
+
+
+.legend-tooltip:before {
+    bottom: -18px;
+    content: " ";
+    display: block;
+    height: 6px;
+    left: calc(50% - 8px);
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    border-color: var(--transparent-dark) transparent transparent transparent;
+    border-style: solid;
+    border-width: 6px;
+}
+
+
+
+/* ROLES & ROLE CARDS */
+
+.roles {
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, .2);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.roles .wrapper {
+    border: 1px solid silver;
+    background-color: white;
+    width: 100%;
+    max-width: 1140px;
+    width: 100%;
+    padding: 20px 20px 60px;
+    border-radius: 10px;
+}
+.roles .wrapper .role-cards {
+    display: flex;
+    justify-content: space-between;
+}
+.roles .wrapper .role-cards .role-card.revealed {
+    width: 100%;
+    /* max-width: 100%; */
+    display: block;
+    text-align: left;
+}
+.roles .wrapper .role-cards .role-card {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 10vw;
+    max-width: 100%;
+    max-width: 18vw;
+    min-height: 20vw;
+    height: 20vh;
+    background-color: var(--main-red);
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    /* transition: width, opacity 500ms ease-out; */
+    /* transition: all 500ms ease-out; */
+}
+.roles .wrapper .role-cards .role-card.hide {
+    opacity: 0;
+}
+.roles .wrapper .role-cards .role-card.selected {
+    background-color: gray;
+    cursor: not-allowed;
+}
+.roles .wrapper .role-cards .role-card:not(.selected):not(.revealed):hover {
+    background-color: steelblue;
+}
+
+@media screen and (max-width:720px) {
+    .roles .wrapper .role-cards .role-card.revealed {
+        max-width: 100%;
+        height: 40vh;
+    }
+
+    
 }

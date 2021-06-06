@@ -1,16 +1,4 @@
-import { useState } from 'react';
 import Switch from './Switch';
-
-const initialSettings: GameSettings = {
-    roles: false,
-    maxRounds: 0,
-    multipleBingos: false,
-    scoring: false,
-    timeoutDuration: 20,
-    uniqueCards: false,
-    uniqueSelection: false,
-    unrelatedItems: false
-};
 
 const settingsOptions = [
     { title: 'Multiple Bingos', prop: 'multipleBingos', description: 'When Multiple Bingos is on, the players will continue playing until a player finishes all bingos in their card. Otherwise, the game will end when a player finds a bingo.' },
@@ -23,13 +11,11 @@ const settingsOptions = [
 ]
 const timeoutDurationOption = { title: 'Round Duration', prop: 'timeoutDuration', description: 'This determines how long a round will take. The shorter, the more challenging it is to select an item.' };
 
-const Settings = ({ showDescription }: { showDescription: boolean }) => {
-    const [settings, setSettings] = useState(initialSettings);
+const comingSoon = ['scoring', 'roles', 'unrelatedItems'];
 
-    console.log('settings', settings);
+const Settings = ({ showDescription, settings, setSettings, close }: { close?: () => void, settings: GameSettings, setSettings: (newSettings: GameSettings) => void, showDescription: boolean }) => {
 
     const toggle = (prop: string) => {
-        console.log('prop', prop);
         const newSettings = { ...settings };
         newSettings[prop] = !newSettings[prop];
 
@@ -40,7 +26,6 @@ const Settings = ({ showDescription }: { showDescription: boolean }) => {
     }
 
     const setRange = (prop: string, value: number) => {
-        console.log('range', value);
         const newSettings = { ...settings };
         newSettings[prop] = value;
         setSettings(newSettings);
@@ -48,19 +33,23 @@ const Settings = ({ showDescription }: { showDescription: boolean }) => {
 
     return (
         <div className='settings mb-40'>
+            {
+                close &&
+                <div onClick={close} className='close'>X</div>
+            }
             <div className=''>
                 {
                     settingsOptions.map((opt, index) => (
                         <div key={'setting_opt_' + index} className={`${index > 0 && 'mt-20'} flex space-between`}>
                             <div className='col1 mr-20'>
-                                <p className='option'>{opt.title}</p>
+                                <p className='option'>{opt.title} {comingSoon.includes(opt.prop) ? '(Coming soon)' : ''}</p>
                                 {
                                     showDescription &&
                                     <p className='description'> {opt.description} </p>
                                 }
                             </div>
                             <div className='col2'>
-                                <Switch disabled={opt.prop === 'uniqueSelection' && settings.uniqueCards ? true : false} active={settings[opt.prop]} toggle={() => toggle(opt.prop)} />
+                                <Switch disabled={comingSoon.includes(opt.prop) || (opt.prop === 'uniqueSelection' && settings.uniqueCards) ? true : false} active={settings[opt.prop]} toggle={() => toggle(opt.prop)} />
                             </div>
                         </div>
                     ))
@@ -69,11 +58,16 @@ const Settings = ({ showDescription }: { showDescription: boolean }) => {
                 <div className='flex space-between'>
                     <div>
                         <p className='option'>{timeoutDurationOption.title}</p>
-                        <p className='description'> {timeoutDurationOption.description} </p>
+
+                        {
+                            showDescription &&
+                            <p className='description'> {timeoutDurationOption.description} </p>
+                        }
+
                     </div>
                     <div className='flex-column-center'>
                         <p>{settings.timeoutDuration} seconds</p>
-                        <input className='range' min='10' max='60' type='range' onChange={e => setRange(timeoutDurationOption.prop, +e.target.value)} value={settings.timeoutDuration} />
+                        <input className='range' min='1' max='60' type='range' onChange={e => setRange(timeoutDurationOption.prop, +e.target.value)} value={settings.timeoutDuration} />
                     </div>
                 </div>
             </div>

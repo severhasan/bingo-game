@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 
-const StatusBar = ({ status, movie, remainingRounds, bingoCount, reset}: StatusBarProps) => {
+const StatusBar = ({ status, movie, winner, playerName, timeoutDuration, remainingRounds, bingoCount, reset}: StatusBarProps) => {
+    // const [progressDuration, setProgressDuration] = useState(0);
+
+    // useEffect(() => {
+    //     setProgressDuration(timeoutDuration);
+    // }, [timeoutDuration])
 
     let statusMessage = '';
     switch (status) {
@@ -8,7 +13,7 @@ const StatusBar = ({ status, movie, remainingRounds, bingoCount, reset}: StatusB
             statusMessage = 'Game is about to start. Are you ready?';
             break;
         case 'game_finished':
-            statusMessage = `Game has finished with ${bingoCount} bingos! The caller has no more movies left in their pouch. :/`;
+            statusMessage = `Game has finished with ${bingoCount} bingos! ${playerName === winner ? 'You are' : `${winner} is`} the winner!`;
             break;
         case 'drawing_item':
             statusMessage = 'Hold on! I am looking for a movie...';
@@ -20,10 +25,10 @@ const StatusBar = ({ status, movie, remainingRounds, bingoCount, reset}: StatusB
 
     return (
         <div className='game-status-bar'>
-            <div className='stats'>
+            {/* <div className='stats'>
                 <p>Remaining Rounds: {remainingRounds}</p>
                 <p>Bingos: {bingoCount}</p>
-            </div>
+            </div> */}
             <div>
                 <p className='status-message'>{statusMessage}</p>
                 {status === 'item_selected' && <p className='current-movie'>{movie}</p>}
@@ -31,13 +36,13 @@ const StatusBar = ({ status, movie, remainingRounds, bingoCount, reset}: StatusB
             <div>
                 {
                     status === 'game_finished' &&
-                    <button onClick={reset} className='btn btn-success'>RESET</button>
+                    <button onClick={reset} className='btn game-button'>RESET</button>
                 }
             </div>
             {
                 status === 'item_selected' &&
                 <div className='progress-bar'>
-                    <div className={`countdown ${status === 'item_selected' ? 'active' : ''}`}></div>
+                    <div style={{animationDuration: `${timeoutDuration}ms`}} className={`countdown ${status === 'item_selected' ? 'active' : ''}`}></div>
                 </div>
             }
         </div>
