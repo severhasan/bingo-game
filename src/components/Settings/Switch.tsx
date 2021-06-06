@@ -1,10 +1,10 @@
 
-const Switch = ({ active, toggle }: { active: boolean, toggle: () => void }) => {
+const Switch = ({ disabled, active, toggle }: { disabled: boolean, active: boolean, toggle: () => void }) => {
 
     return (
-        <div className={`switch ${active ? 'active' : ''}`}>
+        <div className={`switch ${active ? 'active' : ''} ${disabled && 'disabled'}`}>
             <div className='container'></div>
-            <div onClick={toggle} className='knob'></div>
+            <div onClick={disabled ? null : toggle} className='knob'></div>
         </div>
     )
 };

@@ -24,7 +24,7 @@ const JoinGame = ({ joinLobby }: { joinLobby: (roomId) => void }) => {
     return (
         <div className='join-game-inputs'>
             <form onSubmit={null}>
-                <div className='flex-column'>
+                <div className='flex-column-center'>
                     <label htmlFor='room-id'>Room ID</label>
                     <input className={isRoomIdInvalid ? 'invalid' : ''} id='room-id' name='room-id' type='text' onChange={(e) => handleRoomId(e.target.value)} value={roomId} />
                     <label className='mt-20' htmlFor='player-name'>Player Name</label>

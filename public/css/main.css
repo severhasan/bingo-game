@@ -384,6 +384,10 @@ p {
 .flex-column {
     display: flex;
     flex-direction: column;
+}
+.flex-column-center {
+    display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
 }
@@ -427,6 +431,10 @@ p {
 input {
     outline-color: var(--main-red);
 }
+p.note {
+    color: gray;
+    font-size: .8em;
+}
 
 
 /* LOBBY */
@@ -463,9 +471,12 @@ input {
     color: steelblue;
     font-weight: 600;
 }
-.lobby p.note {
+/* .lobby p.note {
     color: gray;
     font-size: .8em;
+} */
+.lobby input.range {
+    width: 200px;
 }
 
 @media screen and (max-width: 720px) {
@@ -518,15 +529,18 @@ input {
 }
 .switch .container::after {
     content: 'OFF';
+    line-height: 30px;
     position: absolute;
-    right: 5px;
-    top: 5px;
+    right: 8px;
+    top: 2px;
+    vertical-align: middle;
+    /* top: 10px; */
     transition: all ease-out;
 }
 .switch.active .container::after {
     content: 'ON';
-    right: 30px;
-    top: 5px;
+    right: 34px;
+    top: 2px;
 }
 .switch .knob {
     top: -4px;
@@ -541,6 +555,15 @@ input {
 .switch.active .knob {
     left: 40px;
 }
+.switch.disabled .container {
+    background-color: rgb(128, 128, 128);
+    /* background-color: silver; */
+}
+.switch.disabled .knob {
+    /* background-color: darkgray; */
+    background-color: lightgray;
+    cursor: not-allowed;
+}
 
 /* Settings Component */
 .settings {
@@ -552,6 +575,15 @@ input {
     background-color: var(--main-red);
     width: 100%;
     max-width: 720px;
+}
+.settings .col1 {
+    width: 80%;
+}
+.settings .col2 {
+    width: 20%;
+    margin-top: 18px;
+    display: flex;
+    justify-content: flex-end;
 }
 .settings .option {
     font-size: 1.8em;
@@ -568,4 +600,11 @@ input {
     flex-direction: column;
     justify-content: center;
     align-items: center;
+}
+
+@media screen and (max-width: 720px) {
+    .settings .col2.flex-column {
+        justify-content: flex-start;
+        margin-top: 18px;
+    }
 }

@@ -12,7 +12,7 @@ const CreateGame = ({ createNewGame }: { createNewGame: (event) => void }) => {
     return (
         <div className='create-game-inputs'>
             <form onSubmit={null}>
-                <div className='flex-column'>
+                <div className='flex-column-center'>
                     <label htmlFor='player-name'>Player Name</label>
                     <input
                         type='text'
@@ -29,6 +29,7 @@ const CreateGame = ({ createNewGame }: { createNewGame: (event) => void }) => {
 
         <div className='mt-40 mb-40'>
             <h2>Settings</h2>
+            <p className='note italic'>Hint: You can always update these settings on the Lobby screen.</p>
             <Settings showDescription />
         </div>
 
