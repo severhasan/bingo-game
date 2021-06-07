@@ -1,4 +1,20 @@
+// GAME SETTINGS
 export const FREE_BINGO_TEXT = 'MOVIES BINGO';
+export const MAX_PLAYER_COUNT = 10;
+export const DRAW_ITEM_TIMEOUT = 3000;
+export const COUNTDOWN_TIMEOUT = 15000;
+export const UNRELATED_ITEM_MULTIPLIER = 2;
+export const MAX_SCORE = 100;
+export const DEFAULT_GAME_SETTINGS: GameSettings = {
+    multipleBingos: false,
+    roles: false,
+    unrelatedItems: false,
+    timeoutDuration: COUNTDOWN_TIMEOUT,
+    uniqueCards: false,
+    uniqueSelection: false,
+    scoring: false,
+    maxRounds: 250
+}
 
 // received from imdb.com, top 100
 export const MOVIES = [

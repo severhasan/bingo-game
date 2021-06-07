@@ -1,22 +1,17 @@
-import { MOVIES, SOCKET_EVENTS, RANDOM_MOVIE_CHARACTERS, PLAYER_ROLES } from '../../constants';
-
-const MAX_PLAYER_COUNT = 10;
-const FREE_BINGO_TEXT = 'FREE BINGO';
-// const DRAW_ITEM_TIMEOUT = 3000;
-const DRAW_ITEM_TIMEOUT = 3000;
-const COUNTDOWN_TIMEOUT = 15000;
-const UNRELATED_ITEM_MULTIPLIER = 2;
-const MAX_SCORE = 100;
-const DEFAULT_GAME_SETTINGS: GameSettings = {
-    multipleBingos: false,
-    roles: false,
-    unrelatedItems: false,
-    timeoutDuration: COUNTDOWN_TIMEOUT,
-    uniqueCards: false,
-    uniqueSelection: false,
-    scoring: false,
-    maxRounds: 250
-}
+import {
+    MOVIES,
+    SOCKET_EVENTS,
+    RANDOM_MOVIE_CHARACTERS,
+    MAX_PLAYER_COUNT,
+    FREE_BINGO_TEXT,
+    DRAW_ITEM_TIMEOUT,
+    COUNTDOWN_TIMEOUT,
+    UNRELATED_ITEM_MULTIPLIER,
+    MAX_SCORE,
+    DEFAULT_GAME_SETTINGS,
+    PLAYER_ROLES
+} from '../../constants';
+import Bingo from '../../utils/Bingo';
 
 
 // since game is played 5x5, don't want to bother with the algorithm where the grid size might be different
@@ -27,7 +22,7 @@ const possibleDiogonalBingos = [[4, 8, 12, 16, 20], [0, 6, 12, 18, 24]];
 const possibleBingoScenarios = [...possibleColumnBingos, ...possibleRowBingos, ...possibleDiogonalBingos];
 
 
-class Player {
+export class Player {
     /** the items (numbers or movie names) the player has on their card */
     private card: string[];
     /** the matched items in the card */
@@ -45,7 +40,7 @@ class Player {
     /** scores will keep the track of the scores for each round. Indices will indicate the round of the score */
     scores: number[] = [];
 
-    constructor(socketId: string, name: string, game: Game) {
+    constructor(socketId: string, name: string, game?: Game) {
         this.socketId = socketId;
         this.name = name;
         this.game = game;
@@ -174,7 +169,7 @@ class Lucky extends Player {
     }
 }
 
-class Game {
+class Game extends Bingo {
     /** technically, there should be a limit to how many players can be in a game since the number of items (numbers/movies) will be limited in this version */
     private players: Player[] = [];
     /** room id of socket io where the players will be in */
@@ -197,6 +192,7 @@ class Game {
     isTesting: boolean = false;
 
     constructor(io: any, roomId: string, creatorSocketId: string, settings: GameSettings) {
+        super();
         this.roomId = roomId;
         this.io = io;
         this.creatorSocketId = creatorSocketId;
@@ -210,7 +206,7 @@ class Game {
 
     /** reset the game if the players want to play again */
     reset() {
-        const shuffledStack = this.shuffle(MOVIES);
+        const shuffledStack = Game.shuffle(MOVIES);
         // this.stack = shuffledStack.slice(0);
         this.startGame();
 
@@ -220,7 +216,7 @@ class Game {
     }
 
     generateNewCard() {
-        const newCard = this.shuffle([...this.stack]).slice(0, 24);
+        const newCard = Game.shuffle([...this.stack]).slice(0, 24);
         newCard.splice(12, 0, FREE_BINGO_TEXT);
         return newCard;
     }
@@ -245,7 +241,14 @@ class Game {
     addPlayer(socketId: string, name: string = '') {
         if (this.players.length >= MAX_PLAYER_COUNT) return;
 
+        const possibleNames = [name, `${name} - 1`, `${name} - 2`, `${name} - 3`];
+        const playersWithTheSameName = this.players.filter(player => possibleNames.includes(player.getName()));
+        console.log('playersWithTheSameName', playersWithTheSameName.length);
         let playerName = name;
+        if (playersWithTheSameName.length && playerName) {
+            playerName += ` - ${playersWithTheSameName.length}`;
+        }
+
         if (!playerName) {
             // filter out the character list so that not two names will appear in the list
             const filteredCharacters = RANDOM_MOVIE_CHARACTERS.filter(name => !this.getPlayers().includes(name));
@@ -325,7 +328,7 @@ class Game {
         console.log('game starting...');
         if (!['not_started', 'role_selection'].includes(this.status)) return;
         // handle the game stack, player cards and the items.
-        const shuffledStack = this.shuffle(MOVIES);
+        const shuffledStack = Game.shuffle(MOVIES);
         let stack = [];
 
         // generate new cards for each player and set their cards in accordance witht he game settings
@@ -334,7 +337,7 @@ class Game {
             if (this.settings.uniqueCards) {
                 playerCard = shuffledStack.slice((i * 24), (i + 1) * 24);
             } else {
-                const newShuffle = this.shuffle([...MOVIES]);
+                const newShuffle = Game.shuffle([...MOVIES]);
                 playerCard = newShuffle.slice(0, 24);
             }
             // add free bingo
@@ -455,7 +458,7 @@ class Game {
         // end game & announce the winner
         console.log('ending game');
         this.status = 'game_finished';
-        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, winner: this.winner.getName() });
+        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, winner: this.winner && this.winner.getName() });
         // this.players.forEach(player => {
         //     this.io.to(player.getSocketId()).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, winner: this.winner.getName() });
         // });
@@ -487,24 +490,6 @@ class Game {
     // FOR TESTING PURPOSES
     setTesting() {
         this.isTesting = true;
-    }
-
-
-    /** shuffle the items in the stack - thank you stackoverflow */
-    shuffle(arr: string[]) {
-        let currentIndex = arr.length, temporaryValue: string, randomIndex: number;
-
-        // While there remain elements to shuffle...
-        while (0 !== currentIndex) {
-            randomIndex = Math.floor(Math.random() * currentIndex);
-            currentIndex -= 1;
-
-            // And swap it with the current element.
-            temporaryValue = arr[currentIndex];
-            arr[currentIndex] = arr[randomIndex];
-            arr[randomIndex] = temporaryValue;
-        }
-        return arr;
     }
 }
 

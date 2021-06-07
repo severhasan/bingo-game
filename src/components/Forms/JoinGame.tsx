@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { RANDOM_MOVIE_CHARACTERS } from '../../constants';
 
 
-const JoinGame = ({ joinLobby }: { joinLobby: (roomId) => void }) => {
-    const [playerName, setPlayerName] = useState('');
+const JoinGame = ({ playerName, setPlayerName, joinLobby }: { playerName: string, setPlayerName: (name: string) => void, joinLobby: (roomId: string) => void }) => {
     const [roomId, setRoomId] = useState('');
     const [isRoomIdInvalid, setRoomIdInvalid] = useState(false);
-    const [randomPlayerName, setRandomPlayerName] = useState(RANDOM_MOVIE_CHARACTERS[Math.round((Math.random() * 100))]);
+    const [randomPlayerName] = useState(RANDOM_MOVIE_CHARACTERS[Math.round((Math.random() * 100))]);
 
     const join = (event) => {
         event.preventDefault();

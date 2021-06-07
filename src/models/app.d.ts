@@ -1,5 +1,5 @@
 
-type GameStatus = 'not_started' | 'role_selection' | 'drawing_item' | 'item_selected' | 'game_starting' | 'game_finished';
+type GameStatus = 'not_started' | 'role_selection' | 'drawing_item' | 'computer_picked_item' | 'item_selected' | 'game_starting' | 'game_finished';
 type PlayerStatus = 'healthy' | 'stunned' | 'distorted';
 type PlayerRole = 'pollyanna' | 'sinister' | 'lucky';
 type PlayerCurseInfluence = 'global' | 'individual';
@@ -24,6 +24,11 @@ interface StatusBarProps {
     timeoutDuration: number,
     winner: string,
     playerName: string,
+    /** When playing single player mode againt the computer, the player may not have an item on their card, and the computer might just pick the item. Then this will be used */
+    goNextRound: () => void,
+    uniqueSelection: boolean,
+    uniqueCards: boolean,
+    bothCardsIncludeMovie: boolean
 }
 
 type GameMode = 'demo' | 'single_player' | 'against_computer' | 'multiplayer';

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const StatusBar = ({ status, movie, winner, playerName, timeoutDuration, remainingRounds, bingoCount, reset}: StatusBarProps) => {
+const StatusBar = ({ status, movie, uniqueSelection, uniqueCards, bothCardsIncludeMovie, winner, playerName, timeoutDuration, remainingRounds, goNextRound, bingoCount, reset}: StatusBarProps) => {
     // const [progressDuration, setProgressDuration] = useState(0);
 
     // useEffect(() => {
@@ -21,6 +21,16 @@ const StatusBar = ({ status, movie, winner, playerName, timeoutDuration, remaini
         case 'item_selected':
             statusMessage = `Here is the movie:`;
             break;
+        case 'computer_picked_item':
+            if (uniqueCards || !bothCardsIncludeMovie) {
+                statusMessage = 'You do not seem to have the movie on your card. Life is too harsh; we know. Don\'t try to look at it on the bright side. You\'re basically losing. The computer has picked the movie!';
+            } else {
+                if (uniqueSelection && bothCardsIncludeMovie) {
+                    statusMessage = 'The computer has picked the movie! You were kinda too slow. You\'ll do better next time. Don\'t worry.';
+                } else {
+                    statusMessage = 'The computer has picked the movie!';
+                }
+            }
     }
 
     return (
@@ -32,6 +42,7 @@ const StatusBar = ({ status, movie, winner, playerName, timeoutDuration, remaini
             <div>
                 <p className='status-message'>{statusMessage}</p>
                 {status === 'item_selected' && <p className='current-movie'>{movie}</p>}
+                { status === 'computer_picked_item' && ((uniqueSelection && bothCardsIncludeMovie) || (uniqueCards || !bothCardsIncludeMovie)) && <div><button onClick={goNextRound} className='btn game-button'>Continue</button></div> }
             </div>
             <div>
                 {

@@ -76,7 +76,7 @@ const Lobby = ({ creator }: { creator: boolean }) => {
 
         socket.on(SOCKET_EVENTS.GAME_CREATED, (data: { playerName: string, roomId: string, settings: GameSettings }) => {
             setRoomId(data.roomId);
-            console.log('game-creatd', data);
+            // console.log('game-creatd', data);
             setStatus('created-new-game');
             setMessage('');
             setPlayers([data.playerName]);
@@ -85,23 +85,23 @@ const Lobby = ({ creator }: { creator: boolean }) => {
         });
 
         socket.on(SOCKET_EVENTS.SYNC_LOBBY, (data: { players: string[], creatorId: string }) => {
-            console.log('update lobby:', data);
+            // console.log('update lobby:', data);
             setPlayers(data.players);
             setMessage('');
             if (socket.id === data.creatorId) setCreator(true);
             else setCreator(false);
         });
         socket.on(SOCKET_EVENTS.LOBBY_JOINED, () => {
-            console.log('update joined');
+            // console.log('update joined');
             setStatus('joined-a-game');
             setMessage('');
         });
         socket.on(SOCKET_EVENTS.LOBBY_NOT_FOUND, () => {
-            console.log('lobby not found');
+            // console.log('lobby not found');
             setMessage('Lobby not found. Maybe you entered a wrong room ID?');
         });
         socket.on(SOCKET_EVENTS.LOBBY_FULL, () => {
-            console.log('lobby is full');
+            // console.log('lobby is full');
             setMessage('Lobby is full. You will not be able to join :(');
         });
 
@@ -113,11 +113,11 @@ const Lobby = ({ creator }: { creator: boolean }) => {
 
         // this will trigger events to lead the players to game screen. Then the component/client will send "ready" message. When everyone is ready, the game will start.
         socket.on(SOCKET_EVENTS.START_GAME, (data: { roomId: string }) => {
-            console.log('starting', data.roomId);
+            // console.log('starting', data.roomId);
             router.push(`/game/${data.roomId}`);
         });
         socket.on(SOCKET_EVENTS.REVEAL_ROLE, (data: { role: PlayerRole }) => {
-            console.log('role', data);
+            // console.log('role', data);
             setRole(data.role)
         });
 
@@ -130,7 +130,7 @@ const Lobby = ({ creator }: { creator: boolean }) => {
         }
 
         setRoomId(roomId);
-        console.log('trying to join', roomId);
+        // console.log('trying to join', roomId);
         socket.emit(SOCKET_EVENTS.JOIN_LOBBY, ({ playerName: playerName.trim(), roomId }));
     }
 
@@ -140,7 +140,7 @@ const Lobby = ({ creator }: { creator: boolean }) => {
     }
 
     const startMultiplayerGame = () => {
-        console.log('sending event to start multiplayer game');
+        // console.log('sending event to start multiplayer game');
         socket.emit(SOCKET_EVENTS.START_GAME, { settings });
     }
 
@@ -150,8 +150,8 @@ const Lobby = ({ creator }: { creator: boolean }) => {
 
             {!creator && <p className='message main-color bold'>{message}</p>}
 
-            { (!status && creator) && <CreateGameInputs settings={settings} setSettings={setSettings} createNewGame={createNewGame} />}
-            { (!status && !creator) && <JoinGameInputs joinLobby={joinLobby} />}
+            { (!status && creator) && <CreateGameInputs settings={settings} playerName={playerName} setPlayerName={setPlayerName} setSettings={setSettings} createNewGame={createNewGame} />}
+            { (!status && !creator) && <JoinGameInputs playerName={playerName} setPlayerName={setPlayerName} joinLobby={joinLobby} />}
 
             {
                 status &&

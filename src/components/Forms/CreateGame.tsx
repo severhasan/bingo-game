@@ -3,8 +3,7 @@ import { RANDOM_MOVIE_CHARACTERS } from '../../constants';
 import Settings from '../Settings/Settings';
 
 
-const CreateGame = ({ settings, setSettings, createNewGame }: { settings: GameSettings, setSettings: (newSettings: GameSettings) => void, createNewGame: (event) => void }) => {
-    const [playerName, setPlayerName] = useState('');
+const CreateGame = ({ playerName, setPlayerName, settings, setSettings, createNewGame }: { playerName: string, setPlayerName: (name: string) => void, settings: GameSettings, setSettings: (newSettings: GameSettings) => void, createNewGame: (event) => void }) => {
     const [randomPlayerName] = useState(RANDOM_MOVIE_CHARACTERS[Math.round((Math.random() * 100))]);
 
 
