@@ -1,4 +1,4 @@
-import { MOVIES, FREE_BINGO_TEXT } from '../constants';
+import { MOVIES, FREE_BINGO_TEXT, POSSIBLE_BINGO_SCENARIOS } from '../constants';
 
 export default class Bingo {
     static generateNewGame() {
@@ -22,6 +22,20 @@ export default class Bingo {
         }
         randomItem = newStack.splice(randomIndex, 1)[0];
         return { newStack, randomItem };
+    }
+
+
+    /** takes player card and item matches, looks for matching indices and calculates the bingo count */
+    static getBingos(card: string[], matches: string[]) {
+        let bingos = 0;
+        const indices = matches.map(match => card.indexOf(match));
+        for (const scenario of POSSIBLE_BINGO_SCENARIOS) {
+            const matchingIndices = indices.filter(i => scenario.includes(i));
+            if (scenario.length === matchingIndices.length) {
+                bingos++;
+            }
+        }
+        return bingos;
     }
 
     /** shuffle the items in the stack - thank you stackoverflow */

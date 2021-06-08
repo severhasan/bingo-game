@@ -4,6 +4,7 @@ import StatusBar from '../../components/StatusBar/StatusBar';
 import socket from '../../utils/Socket'
 import { useRouter } from 'next/router'
 import Bingo from '../../utils/Bingo';
+import ScoreBoard from '../ScoreBoard/ScoreBoard';
 
 
 import { FREE_BINGO_TEXT, SOCKET_EVENTS, COUNTDOWN_TIMEOUT } from '../../constants';
@@ -11,8 +12,8 @@ import { CSSProperties, useEffect, useState } from 'react';
 
 const MAX_ROUNDS = 48;
 const COUNTDOWN_TIME = 20000;
-const COMPUTER_COUNTDOWN_TIME = 5000;
-const DRAW_ITEM_TIME = 3000;
+const COMPUTER_COUNTDOWN_TIME = 4000;
+const DRAW_ITEM_TIME = 1500;
 
 const styles: CSSProperties = {
     position: 'fixed',
@@ -54,10 +55,12 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
     const reset = () => {
         setStatus('game_starting');
         setMatches([FREE_BINGO_TEXT]);
-        clearTimeout(countDown);
+        setWinner('');
+        setComputerMatches([FREE_BINGO_TEXT])
         setBingoCount(0);
         setCurrentItem('');
         setRemainingRounds(MAX_ROUNDS);
+        clearTimeout(countDown);
 
         // write the better resetting logic.
         if (gameMode === 'multiplayer') {
@@ -68,9 +71,9 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
     const drawItem = () => {
         // console.log('stack', stack.length);
         if (!stack.length) return setStatus('game_finished');
-        
+
         const { newStack, randomItem } = Bingo.pickRandomItem(stack);
-        
+
         setStack(newStack);
         setCurrentItem(randomItem);
         setStatus('item_selected');
@@ -88,7 +91,7 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
                 } else {
                     setStatus('computer_picked_item');
                 }
-            }, COUNTDOWN_TIME / 2 > 5 ? 5000 : COUNTDOWN_TIME / 2);
+            }, COUNTDOWN_TIME / 2 > COMPUTER_COUNTDOWN_TIME ? COMPUTER_COUNTDOWN_TIME : COUNTDOWN_TIME / 2);
             setCountDown(cd)
         }
         setRemainingRounds(remainingRounds - 1);
@@ -143,11 +146,11 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         }
         if (gameMode === 'single_player') {
             // proceed('game_starting');
-            switch(status) {
+            switch (status) {
                 case 'game_starting':
                     // generate new game and set states
                     const { computerCard, playerCard, stack } = Bingo.generateNewGame();
-    
+
                     setStack(stack);
                     setPlayerCard(playerCard);
                     setComputerCard(computerCard);
@@ -297,45 +300,65 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         });
     }
 
+    const generateScoreBoardPlayerInfo = () => {
+        return [
+            {
+                name: 'You',
+                bingos: Bingo.getBingos(playerCard, matches),
+                matches: matches.map(match => playerCard.indexOf(match)),
+            }
+            ,
+            {
+                name: 'Computer',
+                bingos: Bingo.getBingos(computerCard, computerMatches),
+                matches: computerMatches.map(match => computerCard.indexOf(match)),
+            }
+        ];
+    }
+
 
     return (
-        <div className='game-screen'>
-            {
-                gameMode === 'demo' ?
-                <div>Placeholder - This section will be updated soon.</div>
-                :
-                <>
-                <div className='mt-40'>
-                    <StatusBar
-                        playerName={playerName}
-                        winner={winner}
-                        reset={reset}
-                        remainingRounds={remainingRounds}
-                        status={status}
-                        movie={currentItem}
-                        bingoCount={bingoCount}
-                        timeoutDuration={timeoutDuration}
-                        goNextRound={goNextRound}
-                        bothCardsIncludeMovie={playerCard.includes(currentItem) && computerCard.includes(currentItem)}
-                        uniqueCards={uniqueCards}
-                        uniqueSelection={uniqueSelection}
-                    />
-                </div>
-                <div>
-                    <BingoTable
-                        playerCard={playerCard}
-                        selectedItems={matches}
-                        selectItem={selectItem}
-                    />
-                </div>
+        <>
+            { gameMode === 'single_player' && <ScoreBoard players={generateScoreBoardPlayerInfo()} /> }
+            
+            <div className='game-screen'>
+                {
+                    gameMode === 'demo' ?
+                        <div>Placeholder - This section will be updated soon.</div>
+                        :
+                        <>
+                            <div className='mt-40'>
+                                <StatusBar
+                                    playerName={playerName}
+                                    winner={winner}
+                                    reset={reset}
+                                    remainingRounds={remainingRounds}
+                                    status={status}
+                                    movie={currentItem}
+                                    bingoCount={bingoCount}
+                                    timeoutDuration={timeoutDuration}
+                                    goNextRound={goNextRound}
+                                    bothCardsIncludeMovie={playerCard.includes(currentItem) && computerCard.includes(currentItem)}
+                                    uniqueCards={uniqueCards}
+                                    uniqueSelection={uniqueSelection}
+                                />
+                            </div>
+                            <div>
+                                <BingoTable
+                                    playerCard={playerCard}
+                                    selectedItems={matches}
+                                    selectItem={selectItem}
+                                />
+                            </div>
 
-                <ReactCanvasConfetti
-                    refConfetti={getInstance}
-                    style={styles}
-                />
-                </>
-            }
-        </div>
+                            <ReactCanvasConfetti
+                                refConfetti={getInstance}
+                                style={styles}
+                            />
+                        </>
+                }
+            </div>
+        </>
     )
 }
 

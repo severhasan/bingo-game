@@ -1,0 +1,102 @@
+.ScoreBoard {
+    position: absolute;
+    left: 0px;
+    top: 10vh;
+    min-height: 400px;
+    height: 50vh;
+    padding-right: 40px;
+    color: white;
+    width: 400px;
+    z-index: 9;
+    overflow-y: auto;
+    transition: all 300ms ease-out;
+}
+.ScoreBoard.Close {
+    left: -360px;
+}
+
+.Container {
+    padding: 10px 20px;
+    height: 100%;
+    width: 350px;
+    position: relative;
+    background-color: rgba(60, 60, 66, .9);
+    border: 2px solid black;
+    border-radius: 6px;
+}
+.Container h2 {
+    margin: 0;
+}
+.ScoreBoard .OpenButton {
+    position: absolute;
+    right: 0;
+    top: 0;
+    cursor: pointer;
+}
+.ScoreBoard .OpenButton img {
+    height: 40px;
+}
+.ScoreBoard .CloseButton {
+    cursor: pointer;
+    display: inline-block;
+    background-color: white;
+    padding: 4px 8px;
+    color: darkslategray;
+    border-radius: 50%;
+}
+.ScoreBoard .CloseButton:hover {
+    background-color: rgb(211, 57, 57);
+    color: white;
+}
+
+.Col, .Col2 {
+    padding: 0 10px;
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+}
+.Col h4, .Col2 h4 {
+    margin: 10px 0;
+    font-weight: 300;
+}
+.Col {
+    align-items: center;
+    text-align: center;
+
+}
+.Col2 {
+    text-align: left;
+}
+.Col2 p {
+    margin: 0;
+}
+.PlayerCard {
+    padding: 20px 0;
+    border-bottom: 1px solid white;
+}
+.PlayerCard h3 {
+    margin: 0;
+}
+
+.ReferenceDots {
+    margin: 0 4px !important;
+    margin-bottom: 4px !important;
+    width: 100%;
+    border-bottom: 1px dashed silver;
+}
+
+@media screen and (max-width: 720px) {
+    .ScoreBoard {
+        height: 90vh;
+        width: 100%;
+    }
+    .ScoreBoard .Container {
+        width: 100%;
+    }
+    .ScoreBoard .OpenButton {
+        right: 0px;
+    }
+    .ScoreBoard.Close {
+        left: calc(-100% + 40px);
+    }
+}

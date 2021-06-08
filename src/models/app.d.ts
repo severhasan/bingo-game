@@ -72,3 +72,16 @@ interface PlayerLuck {
     type: PlayerLuckType,
     score: number
 }
+
+
+interface ScoreBoardProps {
+    players?: ScoreBoardPlayer[],
+
+}
+interface ScoreBoardPlayer {
+    /** matches holds the indices */
+    matches: number[],
+    name: string,
+    bingos: number,
+    score?: number
+}
