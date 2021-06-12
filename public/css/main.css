@@ -387,12 +387,32 @@ h2.room-title {
 .ml-40 {
     margin-left: 40px;
 }
+.my-20 {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+.my-40 {
+    margin-top: 40px;
+    margin-bottom: 40px;
+}
 .pb-40 {
     padding-bottom: 40px;
 }
 .px-20 {
     padding-left: 20px;
     padding-right: 20px;
+}
+.px-40 {
+    padding-left: 40px;
+    padding-right: 40px;
+}
+.px-20 {
+    padding-left: 20px;
+    padding-right: 20px;
+}
+.py-10 {
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 .block {
     display: block;
@@ -654,6 +674,14 @@ p.note {
     /* background-color: darkgray; */
     background-color: lightgray;
     cursor: not-allowed;
+}
+
+
+/* Single Player Settings */
+.single-player-create {
+    margin-top: 40px;
+    margin-bottom: 40px;
+    text-align: center;
 }
 
 /* Settings Component */

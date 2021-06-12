@@ -5,18 +5,8 @@ import JoinGameInputs from '../../components/Forms/JoinGame';
 import RoleCards from '../../components/RoleCards/RoleCards';
 import Settings from '../../components/Settings/Settings';
 import socket from '../../utils/Socket';
-import { SOCKET_EVENTS } from '../../constants';
+import { SOCKET_EVENTS, DEFAULT_GAME_SETTINGS } from '../../constants';
 
-const initialSettings: GameSettings = {
-    roles: false,
-    maxRounds: 0,
-    multipleBingos: false,
-    scoring: false,
-    timeoutDuration: 20,
-    uniqueCards: false,
-    uniqueSelection: false,
-    unrelatedItems: false
-};
 
 
 const Lobby = ({ creator }: { creator: boolean }) => {
@@ -29,7 +19,7 @@ const Lobby = ({ creator }: { creator: boolean }) => {
     const [players, setPlayers] = useState([] as string[]);
     const [message, setMessage] = useState('');
     const [isCreator, setCreator] = useState(!!creator);
-    const [settings, setSettings] = useState(initialSettings);
+    const [settings, setSettings] = useState(DEFAULT_GAME_SETTINGS);
     const [isCopied, setCopied] = useState(false);
     const [isSideBarOpen, setSideBarOpen] = useState(false);
     const [roleCardCount, setRoleCardCount] = useState(0);

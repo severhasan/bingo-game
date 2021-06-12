@@ -1,11 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const StatusBar = ({ status, movie, uniqueSelection, uniqueCards, bothCardsIncludeMovie, winner, playerName, timeoutDuration, remainingRounds, goNextRound, bingoCount, reset}: StatusBarProps) => {
-    // const [progressDuration, setProgressDuration] = useState(0);
-
-    // useEffect(() => {
-    //     setProgressDuration(timeoutDuration);
-    // }, [timeoutDuration])
+const StatusBar = ({ status, movie, uniqueSelection, uniqueCards, playerCardIncludesMovie, otherCardsIncludeMovie, winner, playerName, timeoutDuration, goNextRound, bingoCount, reset}: StatusBarProps) => {
 
     let statusMessage = '';
     switch (status) {
@@ -13,7 +8,7 @@ const StatusBar = ({ status, movie, uniqueSelection, uniqueCards, bothCardsInclu
             statusMessage = 'Game is about to start. Are you ready?';
             break;
         case 'game_finished':
-            statusMessage = `Game has finished with ${bingoCount} bingos! ${playerName === winner ? 'You are' : `${winner} is`} the winner!`;
+            statusMessage = `Game has finished with ${bingoCount} bingos! ${winner}`;
             break;
         case 'drawing_item':
             statusMessage = 'Hold on! I am looking for a movie...';
@@ -22,15 +17,23 @@ const StatusBar = ({ status, movie, uniqueSelection, uniqueCards, bothCardsInclu
             statusMessage = `Here is the movie:`;
             break;
         case 'computer_picked_item':
-            if (uniqueCards || !bothCardsIncludeMovie) {
-                statusMessage = 'You do not seem to have the movie on your card. Life is too harsh; we know. Don\'t try to look at it on the bright side. You\'re basically losing. The computer has picked the movie!';
+            if (uniqueCards || !playerCardIncludesMovie) {
+                statusMessage = 'You do not seem to have the movie on your card. Life is too harsh; we know. Don\'t try to look at it on the bright side. You\'re basically losing. The computers have picked the movie!';
             } else {
-                if (uniqueSelection && bothCardsIncludeMovie) {
-                    statusMessage = 'The computer has picked the movie! You were kinda too slow. You\'ll do better next time. Don\'t worry.';
+                if (uniqueSelection && otherCardsIncludeMovie) {
+                    statusMessage = 'The computers have picked the movie! You were kinda too slow. You\'ll do better next time. Don\'t worry.';
                 } else {
-                    statusMessage = 'The computer has picked the movie!';
+                    statusMessage = 'The computers have picked the movie!';
                 }
             }
+            break;
+        case 'missed_selection':
+            if (otherCardsIncludeMovie) {
+                statusMessage = 'The Computers have selected their items, but you missed your chance of selecting the item on your card. We wonder what prevented you from clicking on the item.';
+            } else {
+                statusMessage = 'You missed your chance of selecting the item on your card. We wonder what prevented you from clicking on the item.'
+            }
+            break;
     }
 
     return (
@@ -42,7 +45,7 @@ const StatusBar = ({ status, movie, uniqueSelection, uniqueCards, bothCardsInclu
             <div>
                 <p className='status-message'>{statusMessage}</p>
                 {status === 'item_selected' && <p className='current-movie'>{movie}</p>}
-                { status === 'computer_picked_item' && ((uniqueSelection && bothCardsIncludeMovie) || (uniqueCards || !bothCardsIncludeMovie)) && <div><button onClick={goNextRound} className='btn game-button'>Continue</button></div> }
+                { (status === 'computer_picked_item' || status === 'missed_selection') && <div><button onClick={goNextRound} className='btn game-button'>Continue</button></div> }
             </div>
             <div>
                 {
@@ -53,7 +56,7 @@ const StatusBar = ({ status, movie, uniqueSelection, uniqueCards, bothCardsInclu
             {
                 status === 'item_selected' &&
                 <div className='progress-bar'>
-                    <div style={{animationDuration: `${timeoutDuration}ms`}} className={`countdown ${status === 'item_selected' ? 'active' : ''}`}></div>
+                    <div style={{animationDuration: `${timeoutDuration}s`}} className={`countdown ${status === 'item_selected' ? 'active' : ''}`}></div>
                 </div>
             }
         </div>

@@ -7,15 +7,13 @@ const ScoreBoard = ({players}: ScoreBoardProps) => {
 
     return (
         <div className={[classes.ScoreBoard, open ? classes.Open : classes.Close].join(' ')}>
-            {/* <div className={classes.OpenAction}> */}
-                <div onClick={() => setOpen(true)} className={classes.OpenButton}><img src='/static/scoreboard.svg' alt='scoreboard image' /></div>
-            {/* </div> */}
+            <div onClick={() => setOpen(true)} className={classes.OpenButton}><img src='/static/scoreboard.svg' alt='scoreboard image' /></div>
             <div className={classes.Container}>
-                <div className='flex space-between'>
+                <div className={classes.Title}>
                     <div onClick={() => setOpen(false)} className={classes.CloseButton}>X</div>
                     <h2>Score Board</h2>
                 </div>
-                <div className='flex-column'>
+                <div className={classes.Content}>
                     {
                         players.map((player, index) => (
                             <div key={'player_score_card_' + index} className={classes.PlayerCard}>

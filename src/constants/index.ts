@@ -1,8 +1,8 @@
 // GAME SETTINGS
 export const FREE_BINGO_TEXT = 'MOVIES BINGO';
 export const MAX_PLAYER_COUNT = 10;
-export const DRAW_ITEM_TIMEOUT = 3000;
-export const COUNTDOWN_TIMEOUT = 15000;
+export const DRAW_ITEM_TIMEOUT = 3; // in seconds
+export const COUNTDOWN_TIMEOUT = 15; // in secons
 export const UNRELATED_ITEM_MULTIPLIER = 2;
 export const MAX_SCORE = 100;
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
@@ -13,7 +13,8 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
     uniqueCards: false,
     uniqueSelection: false,
     scoring: false,
-    maxRounds: 250
+    maxRounds: 250,
+    botCount: 3
 }
 // since game is played 5x5, don't want to bother with the algorithm where the grid size might be different
 // these are the indices of items on the card

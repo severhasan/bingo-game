@@ -10,10 +10,11 @@ const settingsOptions = [
     // { title: 'Max Rounds', prop: 'maxRounds', description: 'The maximum rounds in a game'},
 ]
 const timeoutDurationOption = { title: 'Round Duration', prop: 'timeoutDuration', description: 'This determines how long a round will take. The shorter, the more challenging it is to select an item.' };
+const botCountOption = { title: 'Bot Players', prop: 'botCount', description: 'If you don\'t have friends to play with, do not worry; we got you covered. You can set how many computer players there should be in your game. While we cannot guarantee the more computer players, the more fun, you will surely feel a bit more powerful when you win against 4 computer powered bots. :)' };
 
 const comingSoon = ['scoring', 'roles', 'unrelatedItems'];
 
-const Settings = ({ showDescription, settings, setSettings, close }: { close?: () => void, settings: GameSettings, setSettings: (newSettings: GameSettings) => void, showDescription: boolean }) => {
+const Settings = ({ gameMode, showDescription, settings, setSettings, close }: SettingsProps) => {
 
     const toggle = (prop: string) => {
         const newSettings = { ...settings };
@@ -70,6 +71,25 @@ const Settings = ({ showDescription, settings, setSettings, close }: { close?: (
                         <input className='range' min='1' max='60' type='range' onChange={e => setRange(timeoutDurationOption.prop, +e.target.value)} value={settings.timeoutDuration} />
                     </div>
                 </div>
+
+                {
+                    gameMode === 'single_player' &&
+                    <div className='flex space-between'>
+                        <div>
+                            <p className='option'>{botCountOption.title}</p>
+
+                            {
+                                showDescription &&
+                                <p className='description'> {botCountOption.description} </p>
+                            }
+
+                        </div>
+                        <div className='flex-column-center'>
+                            <p>{settings.botCount} bots</p>
+                            <input className='range' min='1' max='4' type='range' onChange={e => setRange(botCountOption.prop, +e.target.value)} value={settings.botCount} />
+                        </div>
+                    </div>
+                }
             </div>
         </div>
     )

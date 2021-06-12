@@ -14,15 +14,31 @@
 .ScoreBoard.Close {
     left: -360px;
 }
+.Title {
+    padding: 10px;
+    position: sticky;
+    left: 0;
+    top: 0px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    background-color: rgb(60, 60, 66);
+    border-bottom: 1px solid white;;
+}
 
 .Container {
-    padding: 10px 20px;
     height: 100%;
     width: 350px;
     position: relative;
     background-color: rgba(60, 60, 66, .9);
     border: 2px solid black;
     border-radius: 6px;
+    overflow-y: auto;
+}
+.Content {
+    display: flex;
+    flex-direction: column;
+    padding: 0px 20px;
 }
 .Container h2 {
     margin: 0;

@@ -376,7 +376,7 @@ class Game extends Bingo {
         this.currentItem = randomItem;
         this.status = 'item_selected';
 
-        this.countdown = setTimeout(this.goNextRound.bind(this), this.settings.timeoutDuration);
+        this.countdown = setTimeout(this.goNextRound.bind(this), this.settings.timeoutDuration * 1000);
 
         // send the item drawn to the players in the room
         // ...

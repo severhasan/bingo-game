@@ -1,5 +1,5 @@
 
-type GameStatus = 'not_started' | 'role_selection' | 'drawing_item' | 'computer_picked_item' | 'item_selected' | 'game_starting' | 'game_finished';
+type GameStatus = 'not_started' | 'role_selection' | 'drawing_item' | 'computer_picked_item' | 'item_selected' | 'missed_selection' | 'game_starting' | 'game_finished';
 type PlayerStatus = 'healthy' | 'stunned' | 'distorted';
 type PlayerRole = 'pollyanna' | 'sinister' | 'lucky';
 type PlayerCurseInfluence = 'global' | 'individual';
@@ -14,13 +14,13 @@ interface BingoTableProps {
 }
 
 interface StatusBarProps {
-    remainingRounds: number,
+    // remainingRounds: number, // legacy
     status: GameStatus,
     /** name of the current movie drawn by the caller */
     movie: string,
     bingoCount: number,
     reset: () => void,
-    /** since the duration of the rounds is now dynamic, we need to set it up every time */
+    /** since the duration of the rounds is now dynamic, we need to set it up every time (in seconds) */
     timeoutDuration: number,
     winner: string,
     playerName: string,
@@ -28,7 +28,8 @@ interface StatusBarProps {
     goNextRound: () => void,
     uniqueSelection: boolean,
     uniqueCards: boolean,
-    bothCardsIncludeMovie: boolean
+    playerCardIncludesMovie: boolean,
+    otherCardsIncludeMovie: boolean
 }
 
 type GameMode = 'demo' | 'single_player' | 'against_computer' | 'multiplayer';
@@ -46,7 +47,7 @@ interface GameSettings {
     * Currently, we will not provide any option for how many unrelated items there should be in the stack since this option will not be really valuable for the gameplay.
     */
     unrelatedItems: boolean,
-    // the time duration (in millisecods) the players are allowed to select an item on their card
+    // the time duration (in seconds) the players are allowed to select an item on their card
     timeoutDuration: number,
     /** the game can produce unique player cards. If this option is activated, then the multiple selection option should be automatically deactivated */
     uniqueCards: boolean,
@@ -54,7 +55,9 @@ interface GameSettings {
     uniqueSelection: boolean,
     scoring: boolean,
     // if scoring system is activated, there is a potential that ((player * 5) - 1) rounds may pass before someone has a bingo. Limiting rounds might be helpful in this.
-    maxRounds: number
+    maxRounds: number,
+    /** if it single player mode, than we can choose how many computers there should be */
+    botCount: number
 }
 
 interface PlayerHeal {
@@ -73,6 +76,13 @@ interface PlayerLuck {
     score: number
 }
 
+interface SettingsProps {
+    gameMode: GameMode, 
+    showDescription: boolean,
+    settings: GameSettings,
+    close?: () => void,
+    setSettings: (newSettings: GameSettings) => void,
+}
 
 interface ScoreBoardProps {
     players?: ScoreBoardPlayer[],
@@ -84,4 +94,11 @@ interface ScoreBoardPlayer {
     name: string,
     bingos: number,
     score?: number
+}
+
+
+interface GamePlayer {
+    matches: string[],
+    card: string[],
+    name: string,
 }

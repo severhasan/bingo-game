@@ -7,13 +7,14 @@ import Bingo from '../../utils/Bingo';
 import ScoreBoard from '../ScoreBoard/ScoreBoard';
 
 
-import { FREE_BINGO_TEXT, SOCKET_EVENTS, COUNTDOWN_TIMEOUT } from '../../constants';
+import { FREE_BINGO_TEXT, SOCKET_EVENTS, COUNTDOWN_TIMEOUT, DEFAULT_GAME_SETTINGS } from '../../constants';
 import { CSSProperties, useEffect, useState } from 'react';
+import Settings from '../../components/Settings/Settings';
 
 const MAX_ROUNDS = 48;
-const COUNTDOWN_TIME = 20000;
 const COMPUTER_COUNTDOWN_TIME = 4000;
 const DRAW_ITEM_TIME = 1500;
+const PLAYER_AND_BOTS_HAVE_ITEM_COUNTDOWN_TIME = 10000;
 
 const styles: CSSProperties = {
     position: 'fixed',
@@ -30,72 +31,21 @@ let animationInstance = null;
 const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProps) => {
     const router = useRouter();
 
-    const [status, setStatus] = useState('game_starting' as GameStatus)
+    // const [remainingRounds, setRemainingRounds] = useState(MAX_ROUNDS); // LEGACY
+    const [status, setStatus] = useState('not_started' as GameStatus)
     const [stack, setStack] = useState([] as string[]);
     const [playerCard, setPlayerCard] = useState([] as string[]);
     const [currentItem, setCurrentItem] = useState('');
     const [matches, setMatches] = useState([FREE_BINGO_TEXT] as string[]); // matching items
     const [countDown, setCountDown] = useState(null);
+    const [botCountDown, setBotCountDown] = useState(null);
     const [bingoCount, setBingoCount] = useState(0);
-    const [remainingRounds, setRemainingRounds] = useState(MAX_ROUNDS);
     const [timeoutDuration, setTimeoutDuration] = useState(COUNTDOWN_TIMEOUT);
     const [playerName, setPlayerName] = useState('player');
-    const [players, setPlayers] = useState([]); // for multiplayer
-    const [winner, setWinner] = useState('');
+    const [players, setPlayers] = useState([] as GamePlayer[]); // bots in single player mode, all players in multiplayer mode
+    const [winner, setWinner] = useState(''); // winners' names;
     const [isListening, setListening] = useState(false);
-
-    const [computerCard, setComputerCard] = useState([] as string[]);
-    const [computerMatches, setComputerMatches] = useState([FREE_BINGO_TEXT] as string[])
-
-    // single player settings
-    const [uniqueSelection, setUniqueSelection] = useState(false);
-    const [uniqueCards, setUniqueCards] = useState(true);
-
-
-    const reset = () => {
-        setStatus('game_starting');
-        setMatches([FREE_BINGO_TEXT]);
-        setWinner('');
-        setComputerMatches([FREE_BINGO_TEXT])
-        setBingoCount(0);
-        setCurrentItem('');
-        setRemainingRounds(MAX_ROUNDS);
-        clearTimeout(countDown);
-
-        // write the better resetting logic.
-        if (gameMode === 'multiplayer') {
-            router.push('/');
-        }
-    }
-
-    const drawItem = () => {
-        // console.log('stack', stack.length);
-        if (!stack.length) return setStatus('game_finished');
-
-        const { newStack, randomItem } = Bingo.pickRandomItem(stack);
-
-        setStack(newStack);
-        setCurrentItem(randomItem);
-        setStatus('item_selected');
-        if (playerCard.includes(randomItem)) {
-            const cd = setTimeout(() => {
-                setStatus('drawing_item');
-            }, COUNTDOWN_TIME)
-            setCountDown(cd);
-        } else {
-            const cd = setTimeout(() => {
-                setComputerMatches([...computerMatches, randomItem]);
-                if (computerMatches.length === 24) {
-                    setWinner('Computer');
-                    setStatus('game_finished');
-                } else {
-                    setStatus('computer_picked_item');
-                }
-            }, COUNTDOWN_TIME / 2 > COMPUTER_COUNTDOWN_TIME ? COMPUTER_COUNTDOWN_TIME : COUNTDOWN_TIME / 2);
-            setCountDown(cd)
-        }
-        setRemainingRounds(remainingRounds - 1);
-    }
+    const [settings, setSettings] = useState(DEFAULT_GAME_SETTINGS as GameSettings);
 
     // find bettet ways to listen to the socket
     useEffect(() => {
@@ -149,12 +99,14 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
             switch (status) {
                 case 'game_starting':
                     // generate new game and set states
-                    const { computerCard, playerCard, stack } = Bingo.generateNewGame();
+                    const { computerCards, playerCard: newPlayerCard, stack } = Bingo.generateNewGame(settings);
 
                     setStack(stack);
-                    setPlayerCard(playerCard);
-                    setComputerCard(computerCard);
+                    setPlayerCard(newPlayerCard);
+                    const bots = computerCards.map((card, index) => ({ card, matches: [FREE_BINGO_TEXT], name: `Computer ${index + 1}` })) as GamePlayer[];
+                    setPlayers(bots);
                     setStatus('drawing_item');
+                    setTimeoutDuration(settings.timeoutDuration);
                     break;
                 case 'drawing_item':
                     setCurrentItem(''); // the user should not be able to choose after timeout is cleared
@@ -162,10 +114,127 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
                     break;
                 case 'computer_picked_item':
                     setCurrentItem('');
+                    break;
+                case 'game_finished':
+                    clearTimeout(countDown);
+                    clearTimeout(botCountDown);
+                    let bingoList = [];
+                    let bingoMax = bingoCount;
+
+                    const finalPlayerList = [{name: 'You', card: playerCard, matches }, ...players];
+                    finalPlayerList.forEach(player => {
+                        const playerBingos = Bingo.getBingos(player.card, player.matches);
+                        if (playerBingos > bingoMax) bingoMax = playerBingos;
+                        bingoList.push(playerBingos);
+                    });
+                    const winners = bingoList.map((bingos, index) => bingos === bingoMax ? finalPlayerList[index].name : null).filter(playerName => !!playerName);
+                    const winnerString = winners.length === 1 ? `${winners[0] === 'You' ? 'You are' : `${winners[0]} is`} the winner!` : winners.slice(0, winners.length - 1).join(', ') + ` and ${winners.slice(-1)[0]} are the winners!`
+                    setWinner(winnerString);
+
+                    if (bingoMax === bingoCount) {
+                        let i = 0;
+                        const interval = setInterval(() => {
+                            i++;
+                            fire();
+                            if (i === 4) clearInterval(interval);
+                        }, 1000)
+                    }
+                    break;
             }
         }
 
     }, [status]);
+
+    const reset = () => {
+        setStatus('not_started');
+        setWinner('');
+        setBingoCount(0);
+        setCurrentItem('');
+        setMatches([FREE_BINGO_TEXT]);
+        setPlayers([] as GamePlayer[]);
+        // setComputerMatches([]);
+        // setRemainingRounds(MAX_ROUNDS);
+        clearTimeout(countDown);
+
+        // write the better resetting logic.
+        if (gameMode === 'multiplayer') {
+            router.push('/');
+        }
+    }
+
+    const getBotsWithTheItem = (item: string): number[] => players.map((player, index) => player.card.includes(item) ? index : -1).filter(index => index >= 0);
+
+    const selectItemForBots = (randomItem: string) => {
+        const newPlayers = [...players];
+        const indicesOfBotsWithItem = getBotsWithTheItem(randomItem);
+        const botsHaveSelectedItem = players.filter(player => player.matches.includes(randomItem)).length >= 1;
+        
+        if (botsHaveSelectedItem) return;
+        let isWinner = false;
+
+        if (settings.uniqueSelection) {
+            const randomIndex = Math.round(Math.random() * indicesOfBotsWithItem.length - 1);
+            const newMatches = [...newPlayers[randomIndex].matches, randomItem];
+            newPlayers[randomIndex] = { ...newPlayers[randomIndex], matches: newMatches };
+
+            const playerBingos = Bingo.getBingos(newPlayers[randomIndex].card, newMatches);
+            if (newMatches.length === 25 || (!settings.multipleBingos && playerBingos > 0)) {
+                setPlayers(newPlayers);
+                setStatus('game_finished');
+            } else {
+                setStatus('computer_picked_item');
+            }
+        } else {
+            indicesOfBotsWithItem.forEach(idx => {
+                const newMatches = [...newPlayers[idx].matches, randomItem];
+                newPlayers[idx] = { ...newPlayers[idx], matches: newMatches };
+
+                const playerBingos = Bingo.getBingos(newPlayers[idx].card, newMatches);
+                if (newMatches.length === 25 || (!settings.multipleBingos && playerBingos > 0)) {
+                    isWinner = true;
+                }
+            });
+            setPlayers(newPlayers);
+
+            if (!playerCard.includes(randomItem) && !isWinner) {
+                setStatus('computer_picked_item');
+            }
+            if (isWinner) {
+                setStatus('game_finished');
+            }
+        }
+    }
+
+    const drawItem = () => {
+        if (!stack.length) return setStatus('game_finished');
+
+        const { newStack, randomItem } = Bingo.pickRandomItem(stack);
+
+        setStack(newStack);
+        setCurrentItem(randomItem);
+        setStatus('item_selected');
+        const playerHasItem = playerCard.includes(randomItem);
+        const indicesOfBotsWithItem = getBotsWithTheItem(randomItem);
+        const botsHaveItem = indicesOfBotsWithItem.length > 0;
+
+        if (playerHasItem) {
+            // set the timeout for the player
+            const cd = setTimeout(() => {
+                // setStatus('drawing_item');
+                setStatus('missed_selection');
+            }, settings.timeoutDuration * 1000)
+            setCountDown(cd);
+        }
+        if (botsHaveItem) {
+            let to = PLAYER_AND_BOTS_HAVE_ITEM_COUNTDOWN_TIME;
+            if (!playerHasItem) to = 2000;
+            // computers must select the current item (maybe even before the player can select);
+            const bcd = setTimeout(() => {
+                selectItemForBots(randomItem);
+            }, to);
+            setBotCountDown(bcd);
+        }
+    }
 
     const selectItem = (item: string) => {
         if (matches.includes(item)) return;
@@ -173,18 +242,16 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
 
         if (gameMode === 'single_player') {
             clearTimeout(countDown);
+            clearTimeout(botCountDown);
+
+            // select items for bots if they have the current item on their card
+            selectItemForBots(currentItem);
+
             const newMatches = [...matches, item];
             setMatches(newMatches);
 
-            // do not let get all of the items if there is a remaining rounds is on
-            // if (remainingRounds <= 0) {
-            //     // console.log('newSelectedMovies', newSelectedMovies.length)
-            //     return setStatus('game_finished');
-            // }
-
-            checkBingos(newMatches);
-            if (newMatches.length === 25) {
-                setWinner('player');
+            const bingos = checkBingos(newMatches);
+            if (newMatches.length === 25 || (!settings.multipleBingos && bingos > 0)) {
                 return setStatus('game_finished');
             }
             setStatus('drawing_item');
@@ -257,6 +324,7 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
             fire();
         }
         setBingoCount(newBingoCount);
+        return newBingoCount;
     }
 
     const getInstance = (instance) => {
@@ -301,64 +369,80 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
     }
 
     const generateScoreBoardPlayerInfo = () => {
+        const playerInfo = { name: 'You', bingos: Bingo.getBingos(playerCard, matches), matches: matches.map(match => playerCard.indexOf(match)) };
         return [
-            {
-                name: 'You',
-                bingos: Bingo.getBingos(playerCard, matches),
-                matches: matches.map(match => playerCard.indexOf(match)),
+            playerInfo,
+            ...players.map(player => ({
+                name: player.name,
+                bingos: Bingo.getBingos(player.card, player.matches),
+                matches: player.matches.map(match => player.card.indexOf(match)
+                )
             }
-            ,
-            {
-                name: 'Computer',
-                bingos: Bingo.getBingos(computerCard, computerMatches),
-                matches: computerMatches.map(match => computerCard.indexOf(match)),
-            }
-        ];
+            ))
+        ]
     }
 
 
     return (
-        <>
-            { gameMode === 'single_player' && <ScoreBoard players={generateScoreBoardPlayerInfo()} /> }
-            
-            <div className='game-screen'>
-                {
-                    gameMode === 'demo' ?
-                        <div>Placeholder - This section will be updated soon.</div>
-                        :
-                        <>
-                            <div className='mt-40'>
-                                <StatusBar
-                                    playerName={playerName}
-                                    winner={winner}
-                                    reset={reset}
-                                    remainingRounds={remainingRounds}
-                                    status={status}
-                                    movie={currentItem}
-                                    bingoCount={bingoCount}
-                                    timeoutDuration={timeoutDuration}
-                                    goNextRound={goNextRound}
-                                    bothCardsIncludeMovie={playerCard.includes(currentItem) && computerCard.includes(currentItem)}
-                                    uniqueCards={uniqueCards}
-                                    uniqueSelection={uniqueSelection}
-                                />
-                            </div>
-                            <div>
-                                <BingoTable
-                                    playerCard={playerCard}
-                                    selectedItems={matches}
-                                    selectItem={selectItem}
-                                />
-                            </div>
+        <div>
+            { gameMode === 'single_player' && status !== 'not_started' && <ScoreBoard players={generateScoreBoardPlayerInfo()} />}
 
-                            <ReactCanvasConfetti
-                                refConfetti={getInstance}
-                                style={styles}
-                            />
-                        </>
-                }
-            </div>
-        </>
+            {
+                gameMode === 'single_player' && status === 'not_started' ?
+
+                    <div className='single-player-create'>
+                        <h1>Create New Single Player Game</h1>
+                        <div className='my-40'>
+                            <button onClick={() => setStatus('game_starting')} className='btn game-button'>Start</button>
+                        </div>
+                        <Settings
+                            gameMode={gameMode}
+                            showDescription={true}
+                            setSettings={setSettings}
+                            settings={settings}
+                        />
+                    </div>
+                    :
+                    <div className='game-screen'>
+                        {
+                            gameMode === 'demo' ?
+                                <div>Placeholder - This section will be updated soon.</div>
+                                :
+                                <>
+                                    <div className='mt-40'>
+                                        <StatusBar
+                                            playerName={playerName}
+                                            winner={winner}
+                                            reset={reset}
+                                            status={status}
+                                            movie={currentItem}
+                                            bingoCount={bingoCount}
+                                            timeoutDuration={timeoutDuration}
+                                            goNextRound={goNextRound}
+                                            playerCardIncludesMovie={playerCard.includes(currentItem)}
+                                            otherCardsIncludeMovie={players.filter(player => player.card.includes(currentItem)).length >= 1}
+                                            uniqueCards={settings.uniqueCards}
+                                            uniqueSelection={settings.uniqueSelection}
+                                        />
+                                    </div>
+                                    <div>
+                                        <BingoTable
+                                            playerCard={playerCard}
+                                            selectedItems={matches}
+                                            selectItem={selectItem}
+                                        />
+                                    </div>
+
+                                    <ReactCanvasConfetti
+                                        refConfetti={getInstance}
+                                        style={styles}
+                                    />
+                                </>
+                        }
+                    </div>
+            }
+
+        </div>
     )
 }
 
