@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ComputerCard from '../../components/ComputerCard/ComputerCard';
 import classes from './ScoreBoard.module.css';
 
-const ScoreBoard = ({ players }: ScoreBoardProps) => {
+const ScoreBoard = ({ players, newBingos }: ScoreBoardProps) => {
     const [open, setOpen] = useState(true);
 
     return (
@@ -17,6 +17,8 @@ const ScoreBoard = ({ players }: ScoreBoardProps) => {
                     {
                         players.map((player, index) => (
                             <div key={'player_score_card_' + index} className={classes.PlayerCard}>
+                                { newBingos.includes(index) && <div className={classes.NewBingo}> New Bingo! </div> }
+                                
                                 <div className='text-center'>
                                     <h3>{player.name}</h3>
                                 </div>

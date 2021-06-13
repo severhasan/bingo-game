@@ -24,6 +24,7 @@
     justify-content: space-between;
     background-color: rgb(60, 60, 66);
     border-bottom: 1px solid white;;
+    z-index: 99;
 }
 
 .Container {
@@ -89,6 +90,7 @@
 .PlayerCard {
     padding: 20px 0;
     border-bottom: 1px solid white;
+    position: relative;
 }
 .PlayerCard h3 {
     margin: 0;
@@ -99,6 +101,16 @@
     margin-bottom: 4px !important;
     width: 100%;
     border-bottom: 1px dashed silver;
+}
+
+.NewBingo {
+    padding: 6px 10px;
+    border-radius: 4px;
+    position: absolute;
+    left: 0;
+    top: 10px;
+    background-color: yellowgreen;
+    color: white;
 }
 
 @media screen and (max-width: 720px) {

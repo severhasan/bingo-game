@@ -1,19 +1,32 @@
 .Wrapper {
-    position: fixed;
-    top: 10vh;
+    position: absolute;
+    top: -60px;
     right: 0;
+    left: 0;
     padding: 10px;
-    border-radius: 6px;
-    background-color: yellowgreen;
     z-index: 99;
+    width: 100%;
+    height: 60px;
+    background-color: yellowgreen;
+    transition: top 500ms ease-out;
+    overflow: hidden;
+}
+.Wrapper.Active {
+    top: 0;
 }
 .Wrapper p {
     margin: 0;
 }
 .Notification {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     position: relative;
-    padding: 0 16px 0 6 px;
-    min-width: 200px
+    padding: 0 16px 0 6px;
+    width: 100%;
+    color: white;
 }
 .Close {
     position: absolute;
@@ -30,10 +43,19 @@
 }
 
 .Content {
-    font-weight: 1.1em;
+    font-size: 2em;
     font-weight: 500;
     margin-bottom: 10px !important;
 }
 .SubContent {
-    font-weight: .9em;
+    font-size: 1em;
+}
+
+@media screen and (max-width: 720px) {
+    .Content {
+        font-size: 1.8em;
+    }
+    .SubContent {
+        font-size: .7em;
+    }
 }

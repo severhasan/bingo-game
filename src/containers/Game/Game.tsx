@@ -50,6 +50,7 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
     const [score, setScore] = useState(0);
     const [scoreLogs, setScoreLogs] = useState({} as ScoreLogs) // will be only used in score mode
     const [roundStartTime, setRoundStartTime] = useState(0); // Date.now
+    const [newBingos, setNewBingos] = useState([] as number[]);
 
     // find bettet ways to listen to the socket
     useEffect(() => {
@@ -160,6 +161,7 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         setCurrentItem('');
         setMatches([FREE_BINGO_TEXT]);
         setPlayers([] as GamePlayer[]);
+        setNewBingos([]);
         // setComputerMatches([]);
         // setRemainingRounds(MAX_ROUNDS);
         clearTimeout(countDown);
@@ -181,12 +183,18 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         let isWinner = false;
 
         if (settings.uniqueSelection) {
-            const randomIndex = Math.round(Math.random() * indicesOfBotsWithItem.length - 1);
+            const randomBotsWithItemIndex = Math.round(Math.random() * indicesOfBotsWithItem.length - 1);
+            const randomIndex = indicesOfBotsWithItem[randomBotsWithItemIndex];
             const randomPlayer = newPlayers[randomIndex];
             const newMatches = [...randomPlayer.matches, randomItem];
 
             // add score
             const playerBingos = Bingo.getBingos(randomPlayer.card, newMatches);
+            if (playerBingos > randomPlayer.bingos) {
+                setNewBingos([randomIndex + 1]);
+                console.log('new bingo in gametsx', [randomIndex]);
+            }
+
             let newScore = newMatches.length - 1;
             if (settings.scoring) {
                 const newBingoScore = (playerBingos - randomPlayer.bingos) * Bingo.bingoScore;
@@ -202,20 +210,25 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
                 setStatus('computer_picked_item');
             }
         } else {
+            const newBingoList = [];
             indicesOfBotsWithItem.forEach(idx => {
                 const newMatches = [...newPlayers[idx].matches, randomItem];
                 let newScore = newMatches.length - 1;
                 const playerBingos = Bingo.getBingos(newPlayers[idx].card, newMatches);
+                if (playerBingos > newPlayers[idx].bingos) {
+                    newBingoList.push(idx + 1);
+                }
                 if (settings.scoring) {
                     const newBingoScore = (playerBingos - newPlayers[idx].bingos) * Bingo.bingoScore;
                     newScore = newPlayers[idx].score + Bingo.baseBotScore + newBingoScore;
                 }
                 newPlayers[idx] = { ...newPlayers[idx], matches: newMatches, bingos: playerBingos, score: newScore };
-
                 if (newMatches.length === 25 || (!settings.multipleBingos && playerBingos > 0)) {
                     isWinner = true;
                 }
             });
+            console.log('newbingos in game.tsx', newBingoList);
+            setNewBingos(newBingoList);
             setPlayers(newPlayers);
 
             if (!playerCard.includes(randomItem) && !isWinner) {
@@ -235,6 +248,7 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         setStack(newStack);
         setCurrentItem(randomItem);
         setStatus('item_selected');
+        setNewBingos([]);
         const playerHasItem = playerCard.includes(randomItem);
         const indicesOfBotsWithItem = getBotsWithTheItem(randomItem);
         const botsHaveItem = indicesOfBotsWithItem.length > 0;
@@ -258,6 +272,10 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         }
         setRoundStartTime(Date.now());
     }
+    
+    const deactivateNotification = () => {
+        setNotificationActive(false);
+    }
 
     const selectItem = (item: string) => {
         if (matches.includes(item)) return;
@@ -273,14 +291,18 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
             const newMatches = [...matches, item];
             setMatches(newMatches);
 
-            const bingos = checkBingos(newMatches);
-            setBingoCount(bingos);
+            const newBingos = checkBingos(newMatches);
+            if (newBingos > bingoCount) {
+                setNotificationActive(true);
+                setTimeout(deactivateNotification, 7000);
+            }
+            setBingoCount(newBingos);
 
             let newScore = newMatches.length - 1;
             if (settings.scoring) {
                 const points = Bingo.calculateScore(roundStartTime, settings.timeoutDuration);
 
-                const newBingoScore = (bingos - bingoCount) * Bingo.bingoScore;
+                const newBingoScore = (newBingos - bingoCount) * Bingo.bingoScore;
                 newScore = score + points + newBingoScore;
 
                 const newScoreLogs = { ...scoreLogs };
@@ -289,7 +311,7 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
             }
             setScore(newScore);
 
-            if (newMatches.length === 25 || (!settings.multipleBingos && bingos > 0)) {
+            if (newMatches.length === 25 || (!settings.multipleBingos && newBingos > 0)) {
                 return setStatus('game_finished');
             }
             setStatus('drawing_item');
@@ -431,9 +453,9 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
 
     return (
         <div>
-            {/* <Notification content='hello world' subcontent='hello' active={notificationActive} setActive={setNotificationActive} /> */}
+            <Notification active={notificationActive} scoring={settings.scoring} />
 
-            {gameMode === 'single_player' && status !== 'not_started' && <ScoreBoard players={generateScoreBoardPlayerInfo()} />}
+            {gameMode === 'single_player' && status !== 'not_started' && <ScoreBoard players={generateScoreBoardPlayerInfo()} newBingos={newBingos} />}
 
             {
                 gameMode === 'single_player' && status === 'not_started' ?

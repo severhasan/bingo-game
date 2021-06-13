@@ -98,6 +98,8 @@ interface SettingsProps {
 
 interface ScoreBoardProps {
     players?: ScoreBoardPlayer[],
+    /** indices of the players */
+    newBingos: number[]
 
 }
 interface ScoreBoardPlayer {
