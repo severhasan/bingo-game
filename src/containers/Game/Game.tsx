@@ -14,7 +14,7 @@ import Settings from '../../components/Settings/Settings';
 
 const MAX_ROUNDS = 48;
 const COMPUTER_COUNTDOWN_TIME = 4000;
-const DRAW_ITEM_TIME = 1500;
+const DRAW_ITEM_TIME = 3000;
 const PLAYER_AND_BOTS_HAVE_ITEM_COUNTDOWN_TIME = 10000;
 
 const styles: CSSProperties = {
@@ -40,9 +40,10 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
     const [countDown, setCountDown] = useState(null);
     const [botCountDown, setBotCountDown] = useState(null);
     const [bingoCount, setBingoCount] = useState(0);
-    const [timeoutDuration, setTimeoutDuration] = useState(COUNTDOWN_TIMEOUT);
+    // const [timeoutDuration, setTimeoutDuration] = useState(COUNTDOWN_TIMEOUT);
     const [playerName, setPlayerName] = useState('player');
     const [players, setPlayers] = useState([] as GamePlayer[]); // bots in single player mode, all players in multiplayer mode
+    const [onlinePlayers, setOnlinePlayers] = useState([] as ScoreBoardPlayer[])
     const [winner, setWinner] = useState(''); // winners' names;
     const [isListening, setListening] = useState(false);
     const [settings, setSettings] = useState(DEFAULT_GAME_SETTINGS as GameSettings);
@@ -56,15 +57,23 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
     useEffect(() => {
         if (gameMode === 'multiplayer' && !isListening) {
             // listen to the server & update game status or players
-            socket.on(SOCKET_EVENTS.STATUS_UPDATE, (data: { status: GameStatus, timeoutDuration: number, currentItem?: string, isGameStarting?: boolean, card?: string[], winner?: string, playerName: string }) => {
+            socket.on(SOCKET_EVENTS.STATUS_UPDATE, (data: { status: GameStatus, settings?: GameSettings, currentItem?: string, isGameStarting?: boolean, card?: string[], winner?: string, playerName?: string, newBingos?: number[], players: ScoreBoardPlayer[] }) => {
                 if (gameMode === 'multiplayer') {
                     setStatus(data.status);
 
+                    if (data.settings) {
+                        setSettings(data.settings);
+                    }
+                    if (data.players) {
+                        setOnlinePlayers(data.players);
+                    }
+
+                    if (data.newBingos) {
+                        setNewBingos(data.newBingos);
+                    }
+
                     if (data.playerName) {
                         setPlayerName(data.playerName);
-                    }
-                    if (data.timeoutDuration) {
-                        setTimeoutDuration(data.timeoutDuration);
                     }
                     if (data.status === 'item_selected') {
                         setCurrentItem(data.currentItem);
@@ -82,17 +91,26 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
                     }
                 }
             });
-            socket.on(SOCKET_EVENTS.MATCH_UPDATE, (data: { matches: string[], bingoCount: number, newBingo: boolean }) => {
+            socket.on(SOCKET_EVENTS.MATCH_UPDATE, (data: { matches: string[], bingoCount: number, newBingo: boolean, scoreLogs: ScoreLogs }) => {
                 setMatches(data.matches);
                 if (data.newBingo) {
                     fire();
+                    setNotificationActive(true);
+                    setTimeout(deactivateNotification, 7000);
+                }
+                if (data.scoreLogs) {
+                    setScoreLogs(data.scoreLogs);
                 }
                 if (data.bingoCount > bingoCount) {
                     setBingoCount(data.bingoCount);
                 }
             });
+            socket.on(SOCKET_EVENTS.PLAYER_UPDATE, (data: {newBingos: number[], players: GamePlayer[]}) => {
+                setNewBingos(data.newBingos);
+                setPlayers(data.players);
+            })
 
-            if (status === 'game_starting') {
+            if (status === 'not_started') {
                 // send info & receive game data (status, players, playerCount, cards etc...)
                 // ...
                 socket.emit(SOCKET_EVENTS.PLAYER_CONNECTED_TO_GAME);
@@ -111,7 +129,6 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
                     const bots = computerCards.map((card, index) => ({ card, bingos: 0, matches: [FREE_BINGO_TEXT], name: `Computer ${index + 1}`, score: 0 })) as GamePlayer[];
                     setPlayers(bots);
                     setStatus('drawing_item');
-                    setTimeoutDuration(settings.timeoutDuration);
                     break;
                 case 'drawing_item':
                     setCurrentItem(''); // the user should not be able to choose after timeout is cleared
@@ -192,7 +209,6 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
             const playerBingos = Bingo.getBingos(randomPlayer.card, newMatches);
             if (playerBingos > randomPlayer.bingos) {
                 setNewBingos([randomIndex + 1]);
-                console.log('new bingo in gametsx', [randomIndex]);
             }
 
             let newScore = newMatches.length - 1;
@@ -227,7 +243,6 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
                     isWinner = true;
                 }
             });
-            console.log('newbingos in game.tsx', newBingoList);
             setNewBingos(newBingoList);
             setPlayers(newPlayers);
 
@@ -263,7 +278,7 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         }
         if (botsHaveItem) {
             let to = PLAYER_AND_BOTS_HAVE_ITEM_COUNTDOWN_TIME;
-            if (!playerHasItem) to = 20;
+            if (!playerHasItem) to = 4000;
             // computers must select the current item (maybe even before the player can select);
             const bcd = setTimeout(() => {
                 selectItemForBots(randomItem);
@@ -437,6 +452,10 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
     }
 
     const generateScoreBoardPlayerInfo = (): ScoreBoardPlayer[] => {
+        if (gameMode === 'multiplayer') {
+            return onlinePlayers;
+        }
+
         const playerInfo = { name: 'You', score, bingos: Bingo.getBingos(playerCard, matches), matches: matches.map(match => playerCard.indexOf(match)) };
         return [
             playerInfo,
@@ -455,7 +474,7 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         <div>
             <Notification active={notificationActive} scoring={settings.scoring} />
 
-            {gameMode === 'single_player' && status !== 'not_started' && <ScoreBoard players={generateScoreBoardPlayerInfo()} newBingos={newBingos} />}
+            {status !== 'not_started' && <ScoreBoard players={generateScoreBoardPlayerInfo()} newBingos={newBingos} />}
 
             {
                 gameMode === 'single_player' && status === 'not_started' ?
@@ -487,10 +506,10 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
                                             status={status}
                                             movie={currentItem}
                                             bingoCount={bingoCount}
-                                            timeoutDuration={timeoutDuration}
+                                            timeoutDuration={settings.timeoutDuration}
                                             goNextRound={goNextRound}
-                                            playerCardIncludesMovie={playerCard.includes(currentItem)}
-                                            otherCardsIncludeMovie={players.filter(player => player.card.includes(currentItem)).length >= 1}
+                                            playerCardIncludesMovie={gameMode === 'single_player' ? playerCard.includes(currentItem) : false}
+                                            otherCardsIncludeMovie={gameMode === 'single_player' ? players.filter(player => player.card.includes(currentItem)).length >= 1 : false}
                                             uniqueCards={settings.uniqueCards}
                                             uniqueSelection={settings.uniqueSelection}
                                         />

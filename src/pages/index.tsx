@@ -28,9 +28,9 @@ const Page = () => {
                     </div>
                 </div>
                 <div className='demo'>
-                    <div className='game-container'>
+                    {/* <div className='game-container'>
                         <Game gameMode='demo' playerCount={1} />
-                    </div>
+                    </div> */}
                 </div>
             </div>
             <div className='footer'>

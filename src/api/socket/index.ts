@@ -34,6 +34,7 @@ export class Player {
     skillPoints = 3;
     /** scores will keep the track of the scores for each round. Indices will indicate the round of the score */
     scores: number[] = [];
+    scoreLogs: ScoreLogs = {};
 
     constructor(socketId: string, name: string, game?: Game) {
         this.socketId = socketId;
@@ -53,6 +54,9 @@ export class Player {
     getMatches() {
         return this.matches;
     }
+    getMatchesIndices() {
+        return this.matches.map(match => this.card.indexOf(match));
+    }
 
     setCard(card: string[]) {
         this.card = card;
@@ -66,8 +70,24 @@ export class Player {
 
     addMatch(match: string) {
         this.matches.push(match);
-        const newBingo = this.checkBingo(this.game.settings.multipleBingos);
-        this.game.io.to(this.socketId).emit(SOCKET_EVENTS.MATCH_UPDATE, { matches: this.matches, bingoCount: this.bingos, newBingo });
+
+        const bingos = Bingo.getBingos(this.card, this.matches);
+        const newBingo = bingos > this.bingos;
+
+        if (this.game.settings.scoring) {
+            const roundScore = Bingo.calculateScore(this.game.roundStartTime, this.game.settings.timeoutDuration);
+            const newBingoScore = (bingos - this.bingos) * Bingo.bingoScore;
+            const newScore = this.score + newBingoScore + roundScore;
+            const newScoreLogs = { ...this.scoreLogs };
+            newScoreLogs[match] = { isActive: true, points: roundScore };
+            this.scoreLogs = newScoreLogs;
+            this.score = newScore;
+        } else {
+            this.score = this.matches.length - 1;
+        }
+        this.bingos = bingos;
+        this.game.io.to(this.socketId).emit(SOCKET_EVENTS.MATCH_UPDATE, { matches: this.matches, bingoCount: this.bingos, newBingo, scoreLogs: this.scoreLogs });
+        this.game.io.to(this.game.getRoomId()).emit(SOCKET_EVENTS.PLAYER_UPDATE, { newBingos: this.game.newBingos, players: this.game.getPlayerScores() });
     }
     setReady() {
         this.isReady = true;
@@ -185,6 +205,10 @@ class Game extends Bingo {
     // game settings
     settings: GameSettings = DEFAULT_GAME_SETTINGS;
     isTesting: boolean = false;
+    /** newBingos keep the new bingos (of the players with their index position in this.players) in the current round */
+    newBingos: number[] = [];
+    /** round start time in millisecons as in Date.now */
+    roundStartTime = 0;
 
     constructor(io: any, roomId: string, creatorSocketId: string, settings: GameSettings) {
         super();
@@ -216,6 +240,9 @@ class Game extends Bingo {
         return newCard;
     }
 
+    getRoomId() {
+        return this.roomId;
+    }
     /** get the socket ids in a room */
     getRoom() {
         return this.io.of("/").adapter.rooms.get(this.roomId);
@@ -231,6 +258,9 @@ class Game extends Bingo {
     getPlayers() {
         return this.players.map(player => player.getName());
     }
+    getPlayerScores(): ScoreBoardPlayer[] {
+        return this.players.map(player => ({ bingos: player.bingos, matches: player.getMatchesIndices(), name: player.getName(), score: player.score }));
+    }
 
     /** add new player to the game */
     addPlayer(socketId: string, name: string = '') {
@@ -238,7 +268,6 @@ class Game extends Bingo {
 
         const possibleNames = [name, `${name} - 1`, `${name} - 2`, `${name} - 3`];
         const playersWithTheSameName = this.players.filter(player => possibleNames.includes(player.getName()));
-        console.log('playersWithTheSameName', playersWithTheSameName.length);
         let playerName = name;
         if (playersWithTheSameName.length && playerName) {
             playerName += ` - ${playersWithTheSameName.length}`;
@@ -350,22 +379,22 @@ class Game extends Bingo {
             this.stack = [...this.players[0].getCard().filter(item => item !== FREE_BINGO_TEXT), ...this.stack];
         }
 
-        console.log('includes???', this.stack.includes(FREE_BINGO_TEXT));
-
 
         // start game & draw an item
         this.status = 'drawing_item';
-        setTimeout(this.drawItem.bind(this), DRAW_ITEM_TIMEOUT);
+        setTimeout(this.drawItem.bind(this), DRAW_ITEM_TIMEOUT * 1000);
 
         // send each player their card info
         this.players.forEach(player => {
-            this.io.to(player.getSocketId()).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, currentItem: this.currentItem, isGameStarting: true, card: player.getCard(), playerName: player.getName(), timeoutDuration: this.settings.timeoutDuration });
+            this.io.to(player.getSocketId()).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, currentItem: this.currentItem, isGameStarting: true, card: player.getCard(), playerName: player.getName(), settings: this.settings, newBingos: this.newBingos, players: this.getPlayerScores() });
         })
     }
 
     drawItem() {
-        console.log('drawing item', this.stack.length);
+        // console.log('drawing item', this.stack.length);
         if (!this.stack.length) return this.endGame();
+
+        this.newBingos = [];
 
         // technically, no need for randomness since it was already shuffled in the first place, and the player cards do not match the movile list, but yeah, why not...
         const newMovies = [...this.stack];
@@ -376,15 +405,18 @@ class Game extends Bingo {
         this.currentItem = randomItem;
         this.status = 'item_selected';
 
+        // console.log('countdown', this.settings.timeoutDuration * 1000);
         this.countdown = setTimeout(this.goNextRound.bind(this), this.settings.timeoutDuration * 1000);
+        if (this.settings.scoring) {
+            this.roundStartTime = Date.now();
+        }
 
         // send the item drawn to the players in the room
-        // ...
-        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, currentItem: this.currentItem });
+        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, currentItem: this.currentItem, newBingos: this.newBingos, players: this.getPlayerScores() });
     }
 
     matchItem(match: string, socketId: string) {
-        console.log('matchitem', match, socketId);
+        // console.log('matchitem', match, socketId);
         if (this.currentItem !== match || this.status !== 'item_selected') return;
 
         const player = this.getPlayer(socketId);
@@ -405,18 +437,34 @@ class Game extends Bingo {
     }
     checkWinner() {
         let winner: Player;
-        for (const player of this.players) {
-            // player.checkBingo(this.settings.multipleBingos);
-
-            console.log('settings & bingos', this.settings.multipleBingos, player.bingos);
-            if (!this.settings.multipleBingos && player.bingos) {
-                winner = player;
-                break;
+        if (this.settings.scoring) {
+            let gameEnded = false;
+            if (this.settings.multipleBingos) {
+                gameEnded = this.players.filter(player => player.getMatches().length === 25).length > 0;
+            } else {
+                gameEnded = this.players.filter(player => player.bingos === 1).length > 0;
             }
 
-            if (player.getMatches().length === 25) {
-                winner = player;
-                break;
+            if (gameEnded) {
+                let maxScore = 0;
+                this.players.forEach((player) => {
+                    if (player.score > maxScore) {
+                        maxScore = player.score;
+                        winner = player;
+                    }
+                });
+            }
+        } else {
+            for (const player of this.players) {
+                if (!this.settings.multipleBingos && player.bingos) {
+                    winner = player;
+                    break;
+                }
+    
+                if (player.getMatches().length === 25) {
+                    winner = player;
+                    break;
+                }
             }
         }
         this.winner = winner;
@@ -442,7 +490,7 @@ class Game extends Bingo {
         clearTimeout(this.countdown);
 
         this.status = 'drawing_item';
-        this.countdown = setTimeout(this.drawItem.bind(this), DRAW_ITEM_TIMEOUT);
+        this.countdown = setTimeout(this.drawItem.bind(this), DRAW_ITEM_TIMEOUT * 1000);
 
         // send the current status of the game to the sockets in the client side
         // ...
@@ -453,7 +501,7 @@ class Game extends Bingo {
         // end game & announce the winner
         console.log('ending game');
         this.status = 'game_finished';
-        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, winner: this.winner && this.winner.getName() });
+        this.io.to(this.roomId).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, players: this.getPlayerScores(), winner: this.winner && `${this.winner.getName()} is the winner.` });
         // this.players.forEach(player => {
         //     this.io.to(player.getSocketId()).emit(SOCKET_EVENTS.STATUS_UPDATE, { status: this.status, winner: this.winner.getName() });
         // });
@@ -518,7 +566,7 @@ const socketHandler = (socket: any, io: any) => {
         console.log('room ID', roomId);
 
         // conver seconeds into milliseconds before setting the settings
-        const settings = { ...data.settings, timeoutDuration: data.settings.timeoutDuration * 1000 };
+        const settings = { ...data.settings };
         const newGame = new Game(io, roomId, socket.id, settings);
         const playerName = newGame.addPlayer(socket.id, data.playerName.trim());
 
@@ -553,8 +601,8 @@ const socketHandler = (socket: any, io: any) => {
 
     // triggers the events to start the game on the backend, starting the game will still require the connection (playerReady status) of all players on the game: '/game/roomId'
     socket.on(SOCKET_EVENTS.START_GAME, (data: { settings: GameSettings }) => {
-        console.log('received event to start multiplayer game');
-        console.log('roomid:', socket.roomId);
+        // console.log('received event to start multiplayer game');
+        // console.log('roomid:', socket.roomId);
         const game = games[socket.roomId];
         if (socket.id !== game.getCreatorId()) return;
 
@@ -563,7 +611,7 @@ const socketHandler = (socket: any, io: any) => {
             game.setPlayerRoles()
         } else {
             // the settings might have been changd in the lobby
-            const newSettings: GameSettings = { ...data.settings, timeoutDuration: data.settings.timeoutDuration * 1000 };
+            const newSettings: GameSettings = { ...data.settings };
             game.setSettings(newSettings);
             io.to(socket.roomId).emit(SOCKET_EVENTS.START_GAME, ({ roomId: socket.roomId }));
         }
@@ -599,7 +647,7 @@ const socketHandler = (socket: any, io: any) => {
 
     socket.on(SOCKET_EVENTS.SELECT_ITEM, (data: { item: string }) => {
         const game = games[socket.roomId];
-        console.log('select item server', data);
+        // console.log('select item server', data);
         if (game) {
             game.matchItem(data.item, socket.id);
         }

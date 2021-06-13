@@ -203,7 +203,7 @@ const Lobby = ({ creator }: { creator: boolean }) => {
                 <div className={`settings-sidebar ${isSideBarOpen ? 'open' : ''}`}>
                     <div className={`wrapper ${isSideBarOpen ? 'open' : ''}`}>
                         <div className='settings-container'>
-                            <Settings close={closeSideBar} settings={settings} setSettings={setSettings} showDescription={false} />
+                            <Settings gameMode={'multiplayer'} close={closeSideBar} settings={settings} setSettings={setSettings} showDescription={false} />
                         </div>
                     </div>
                 </div>

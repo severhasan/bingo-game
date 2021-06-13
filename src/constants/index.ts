@@ -45,6 +45,7 @@ export const SOCKET_EVENTS = {
     LOBBY_JOINED: 'lobby_joined',
     LOBBY_FULL: 'lobby_full',
     START_GAME: 'start_game',
+    PLAYER_UPDATE: 'player_update',
     STATUS_UPDATE: 'status_update',
     MATCH_UPDATE: 'match_update',
     SELECT_ITEM: 'select_item',

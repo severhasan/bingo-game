@@ -28,7 +28,7 @@ const CreateGame = ({ playerName, setPlayerName, settings, setSettings, createNe
         <div className='mt-40 mb-40'>
             <h2>Settings</h2>
             <p className='note italic'>Hint: You can always update these settings on the Lobby screen.</p>
-            <Settings settings={settings} setSettings={setSettings} showDescription />
+            <Settings gameMode='multiplayer' settings={settings} setSettings={setSettings} showDescription />
         </div> 
 
         </div>
