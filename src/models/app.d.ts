@@ -8,9 +8,21 @@ type PlayerLuckType = 'change_next_round_item' | 'dodge_curse' | 'get_more_heal_
 
 interface BingoTableProps {
     /** Grids will determine the number of grids a table has. This will make the game more customizable */
+    scoreLogs: ScoreLogs,
     playerCard: string[],
     selectedItems: string[],
     selectItem: (item: string) => void
+}
+
+interface ScoreLogs {
+    [key: string]: {
+        points: number,
+        isActive: boolean
+    }
+}
+
+interface ItemScore {
+    
 }
 
 interface StatusBarProps {
@@ -77,7 +89,7 @@ interface PlayerLuck {
 }
 
 interface SettingsProps {
-    gameMode: GameMode, 
+    gameMode: GameMode,
     showDescription: boolean,
     settings: GameSettings,
     close?: () => void,
@@ -93,12 +105,14 @@ interface ScoreBoardPlayer {
     matches: number[],
     name: string,
     bingos: number,
-    score?: number
+    score: number
 }
 
 
 interface GamePlayer {
     matches: string[],
-    card: string[],
     name: string,
+    card: string[],
+    score: number,
+    bingos: number
 }

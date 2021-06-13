@@ -2,7 +2,7 @@ import { useState } from 'react';
 import ComputerCard from '../../components/ComputerCard/ComputerCard';
 import classes from './ScoreBoard.module.css';
 
-const ScoreBoard = ({players}: ScoreBoardProps) => {
+const ScoreBoard = ({ players }: ScoreBoardProps) => {
     const [open, setOpen] = useState(true);
 
     return (
@@ -30,7 +30,7 @@ const ScoreBoard = ({players}: ScoreBoardProps) => {
                                         <div className='flex-column space-between h-100'>
                                             <div className='flex'><p>Bingos</p><p className={classes.ReferenceDots}></p><p>{player.bingos}</p></div>
                                             <div className='flex'><p>Matches</p><p className={classes.ReferenceDots}></p><p>{player.matches.length - 1}</p></div>
-                                            <div className='flex'><p>Score</p><p className={classes.ReferenceDots}></p><p>{player.score ?? player.matches.length - 1}</p></div>
+                                            <div className='flex'><p>Score</p><p className={classes.ReferenceDots}></p><p>{player.score}</p></div>
                                         </div>
                                     </div>
                                 </div>

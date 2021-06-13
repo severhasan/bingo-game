@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
 const StatusBar = ({ status, movie, uniqueSelection, uniqueCards, playerCardIncludesMovie, otherCardsIncludeMovie, winner, playerName, timeoutDuration, goNextRound, bingoCount, reset}: StatusBarProps) => {
+    const [resetting, setResetting] = useState(false);
 
     let statusMessage = '';
     switch (status) {
@@ -49,8 +50,16 @@ const StatusBar = ({ status, movie, uniqueSelection, uniqueCards, playerCardIncl
             </div>
             <div>
                 {
-                    status === 'game_finished' &&
-                    <button onClick={reset} className='btn game-button'>RESET</button>
+                    resetting &&
+                    <div>
+                        <p>Are you sure you want to reset the game?</p>
+                        <button onClick={reset} className='btn game-button'>RESET</button>
+                        <button onClick={() => setResetting(false)} className='ml-40 btn game-button'>CANCEL</button>
+                    </div>
+                }
+                {
+                    status === 'game_finished' && !resetting &&
+                    <button onClick={() => setResetting(true)} className='btn game-button'>RESET</button>
                 }
             </div>
             {

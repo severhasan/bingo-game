@@ -12,7 +12,7 @@ const settingsOptions = [
 const timeoutDurationOption = { title: 'Round Duration', prop: 'timeoutDuration', description: 'This determines how long a round will take. The shorter, the more challenging it is to select an item.' };
 const botCountOption = { title: 'Bot Players', prop: 'botCount', description: 'If you don\'t have friends to play with, do not worry; we got you covered. You can set how many computer players there should be in your game. While we cannot guarantee the more computer players, the more fun, you will surely feel a bit more powerful when you win against 4 computer powered bots. :)' };
 
-const comingSoon = ['scoring', 'roles', 'unrelatedItems'];
+const comingSoon = ['roles', 'unrelatedItems'];
 
 const Settings = ({ gameMode, showDescription, settings, setSettings, close }: SettingsProps) => {
 

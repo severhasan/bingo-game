@@ -1,0 +1,39 @@
+.Wrapper {
+    position: fixed;
+    top: 10vh;
+    right: 0;
+    padding: 10px;
+    border-radius: 6px;
+    background-color: yellowgreen;
+    z-index: 99;
+}
+.Wrapper p {
+    margin: 0;
+}
+.Notification {
+    position: relative;
+    padding: 0 16px 0 6 px;
+    min-width: 200px
+}
+.Close {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    cursor: pointer;
+    padding: 4px 9px;
+    border-radius: 50%;
+    z-index: 9;
+}
+.Close:hover {
+    background-color: rgb(211, 57, 57);
+    color: white;
+}
+
+.Content {
+    font-weight: 1.1em;
+    font-weight: 500;
+    margin-bottom: 10px !important;
+}
+.SubContent {
+    font-weight: .9em;
+}
