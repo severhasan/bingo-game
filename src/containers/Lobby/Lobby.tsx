@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import CreateGameInputs from '../../components/Forms/CreateGame';
 import JoinGameInputs from '../../components/Forms/JoinGame';
 import RoleCards from '../../components/RoleCards/RoleCards';
+import RoleInfo from '../../components/RolesInfo/RolesInfo';
 import Settings from '../../components/Settings/Settings';
 import socket from '../../utils/Socket';
 import { SOCKET_EVENTS, DEFAULT_GAME_SETTINGS } from '../../constants';
@@ -26,6 +27,8 @@ const Lobby = ({ creator }: { creator: boolean }) => {
     const [isRoleCardsActive, setRoleCardsActive] = useState(false);
     const [role, setRole] = useState('' as PlayerRole);
     const [selectedRoles, setSelectedRoles] = useState([] as number[]);
+    const [isPlayerReady, setPlayerReady] = useState(false); // only when the role card mode is activated
+    const [isRoleInfoOpen, setRoleInfoOpen] = useState(false);
 
     const handleSelectRoomId = () => {
         ref.current.select();
@@ -74,10 +77,11 @@ const Lobby = ({ creator }: { creator: boolean }) => {
             setSettings(data.settings);
         });
 
-        socket.on(SOCKET_EVENTS.SYNC_LOBBY, (data: { players: string[], creatorId: string }) => {
+        socket.on(SOCKET_EVENTS.SYNC_LOBBY, (data: { players: string[], creatorId: string, isPlayerReady: boolean }) => {
             // console.log('update lobby:', data);
             setPlayers(data.players);
             setMessage('');
+            setPlayerReady(data.isPlayerReady);
             if (socket.id === data.creatorId) setCreator(true);
             else setCreator(false);
         });
@@ -132,6 +136,10 @@ const Lobby = ({ creator }: { creator: boolean }) => {
     const startMultiplayerGame = () => {
         // console.log('sending event to start multiplayer game');
         socket.emit(SOCKET_EVENTS.START_GAME, { settings });
+    }
+
+    const showRoleInfo = () => {
+        setRoleInfoOpen(true);
     }
 
     return (
@@ -210,10 +218,20 @@ const Lobby = ({ creator }: { creator: boolean }) => {
             }
 
             {
-                status === 'select_roles'
-                &&
-                <RoleCards role={role} selectedRoles={selectedRoles} count={5} selectCard={selectRoleCard} setReady={setReady} />
+                // status === 'select_roles'
+                // &&
+                <RoleCards
+                    role={'pollyanna'}
+                    ready={isPlayerReady}
+                    selectedRoles={selectedRoles}
+                    count={5}
+                    selectCard={selectRoleCard}
+                    setReady={setReady}
+                    showRoleInfo={showRoleInfo}
+                    />
             }
+
+            <RoleInfo active={isRoleInfoOpen} close={() => setRoleInfoOpen(false)} />
 
         </div>
     )

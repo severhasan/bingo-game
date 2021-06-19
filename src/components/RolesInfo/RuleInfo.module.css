@@ -1,0 +1,56 @@
+.RoleInfoWrapper {
+    position: fixed;
+    top: -100vh;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--main-red);
+    color: white;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    transition: top .5s cubic-bezier(0.1, .8, .2, 1);
+}
+.RoleInfoWrapper.Active {
+    top: 0;
+}
+.Close {
+    background-color: white;
+    border-radius: 50%;
+    padding: 6px 12px;
+    color: var(--main-red);
+    cursor: pointer;
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-size: 1.4em;
+}
+.Content {
+    max-width: 960px;
+    margin: 0 auto;
+    padding-top: 40px;
+    position: relative;
+}
+.Role {
+    text-align: left;
+    display: inline-block;
+    width: 100%;
+    font-size: 1.2em;
+    margin-bottom: 60px;
+}
+.Role h2 {
+    margin: 0;
+    font-size: 2.4em;
+}
+
+.Role img {
+    width: 24px;
+    height: 24px;
+}
+
+.Title {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid white;
+    align-items: baseline;
+}

@@ -194,6 +194,10 @@ h2.room-title {
     font-size: 1.4em;
     box-shadow: -1px 4px 6px 1px rgba(31, 6, 14, 0.3) !important;
 }
+.game-ready:hover {
+    background-color: var(--main-red);
+    color: white;
+}
 .game-button.small {
     font-size: 1em;
     padding: 6px;
@@ -885,6 +889,9 @@ p.note {
     /* max-width: 100%; */
     display: block;
     text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 .roles .wrapper .role-cards .role-card {
     padding: 20px;
@@ -905,6 +912,7 @@ p.note {
 }
 .roles .wrapper .role-cards .role-card.hide {
     opacity: 0;
+    width: 100%;
 }
 .roles .wrapper .role-cards .role-card.selected {
     background-color: gray;
@@ -917,8 +925,10 @@ p.note {
 @media screen and (max-width:720px) {
     .roles .wrapper .role-cards .role-card.revealed {
         max-width: 100%;
-        height: 40vh;
+        /* height: 40vh; */
+        height: 100%;
     }
-
-    
+    .roles .wrapper .role-cards .role-card.hide {
+        display: none;
+    }
 }

@@ -5,14 +5,14 @@ const settingsOptions = [
     { title: 'Scoring', prop: 'scoring', description: 'When Scoring is on, the game will keep the score of the players, and each round, players will be granted scores in accordance with their speed of finding the item on their card. Bingos will be rewarded with multiple amounts of points. Whe left off, the game will not keep player scores. When the multiple bingo option is disabled and scoring is enabled, the winner will be determined by the scores.' },
     { title: 'Unique Player Cards', prop: 'uniqueCards', description: 'When Unique Player Cards is on, every player will have a unique card. No item on their card will be the same. Otherwise, the players might potentially have the same items on their cards.' },
     { title: 'Unique Item Selection', prop: 'uniqueSelection', description: 'When Unique Player Cards is off, there are two possible scenarios: Firstly, multiple players can select the same item and will be able to proceed. Secondly, only the first player to click on the item will be able to proceed. This could add a bit more of a challenge to the game. When Unique Item Selection is on, only one (the first) player will be able to select the item. Otherwise, the players can select the item any time and will be scored & checked for bingos accordingly. ' },
-    { title: 'Player Roles', prop: 'roles', description: 'Element of Surprise' },
+    // { title: 'Player Roles', prop: 'roles', description: 'Element of Surprise' },
     // { title: 'Add Extra Items', prop: 'unrelatedItems', description: 'Realistically speaking, when a caller draws an item, no player could potentially have the item on their card. This is only for goofy reasons, otherwise, this does not really serve a great purpose for the game.' }
     // { title: 'Max Rounds', prop: 'maxRounds', description: 'The maximum rounds in a game'},
 ]
 const timeoutDurationOption = { title: 'Round Duration', prop: 'timeoutDuration', description: 'This determines how long a round will take. The shorter, the more challenging it is to select an item.' };
 const botCountOption = { title: 'Bot Players', prop: 'botCount', description: 'If you don\'t have friends to play with, do not worry; we got you covered. You can set how many computer players there should be in your game. While we cannot guarantee the more computer players, the more fun, you will surely feel a bit more powerful when you win against 4 computer powered bots. :)' };
 
-const comingSoon = ['roles', 'unrelatedItems'];
+const comingSoon = ['unrelatedItems'];
 
 const Settings = ({ gameMode, showDescription, settings, setSettings, close }: SettingsProps) => {
 
@@ -56,7 +56,25 @@ const Settings = ({ gameMode, showDescription, settings, setSettings, close }: S
                     ))
                 }
 
-                <div className='flex space-between'>
+                {
+                    gameMode === 'multiplayer' &&
+                    <div className='flex space-between section'>
+                        <div className='col1 mr-20'>
+                            <p className='option'>Player Roles</p>
+
+                            {
+                                showDescription &&
+                                <p className='description'>Element of surprise</p>
+                            }
+
+                        </div>
+                        <div className='col2'>
+                            <Switch disabled={false} active={settings['roles']} toggle={() => toggle('roles')} />
+                        </div>
+                    </div>
+                }
+
+                <div className='flex space-between section'>
                     <div>
                         <p className='option'>{timeoutDurationOption.title}</p>
 
