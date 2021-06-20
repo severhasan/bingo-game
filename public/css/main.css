@@ -882,7 +882,7 @@ p.note {
 }
 .roles .wrapper .role-cards {
     display: flex;
-    justify-content: space-between;
+    justify-content: space-around;
 }
 .roles .wrapper .role-cards .role-card.revealed {
     width: 100%;
@@ -898,9 +898,9 @@ p.note {
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 10vw;
+    min-width: 10vw;
     max-width: 100%;
-    max-width: 18vw;
+    /* max-width: 18vw; */
     min-height: 20vw;
     height: 20vh;
     background-color: var(--main-red);

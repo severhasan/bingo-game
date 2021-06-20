@@ -19,7 +19,7 @@ import Bingo from '../../utils/Bingo';
 
 export class Player {
     /** the items (numbers or movie names) the player has on their card */
-    private card: string[];
+    private card: string[] = [];
     /** the matched items in the card */
     private matches: string[] = [FREE_BINGO_TEXT];
     private socketId: string;
@@ -139,8 +139,9 @@ export class Player {
     }
 }
 
-class Healer extends Player {
+class Pollyanna extends Player {
     private heals: PlayerHeal[] = [];
+    role: PlayerRole = 'pollyanna';
 
     constructor(socketId: string, name: string, game: Game) {
         super(socketId, name, game);
@@ -168,6 +169,7 @@ class Healer extends Player {
 class Sinister extends Player {
     private curses: PlayerCurse[] = [];
     isGlobalSkillUsed: boolean = false;
+    role: PlayerRole = 'sinister';
 
     addCurse(round: number, type: PlayerCurseType, influence: PlayerCurseInfluence) {
         if (this.isGlobalSkillUsed && influence === 'global') return;
@@ -177,6 +179,7 @@ class Sinister extends Player {
 }
 class Lucky extends Player {
     private lucks: PlayerLuck[] = [];
+    role: PlayerRole = 'lucky';
 
     // additional score may be added on heal :)
     addLuck(round: number, type: PlayerLuckType, score = 0) {
@@ -200,6 +203,8 @@ class Game extends Bingo {
     currentItem: string;
     /** role types of players. Each player will have one role */
     playerRoles: PlayerRole[] = [];
+    /** indices of selectedRoles */
+    selectedRoles: number[] = [];
     /** id of timeout */
     countdown: NodeJS.Timeout;
     // game settings
@@ -314,7 +319,8 @@ class Game extends Bingo {
         return this.players.filter(player => player.isConnected).length === this.players.length;
     }
 
-    setPlayerRoles() {
+    generatePlayerRoles() {
+        console.log('generating roles');
         this.status = 'role_selection';
         const playerRoles = [];
         let roles: PlayerRole[] = ['lucky', 'pollyanna', 'sinister'];
@@ -336,14 +342,50 @@ class Game extends Bingo {
         }
         this.playerRoles = playerRoles;
         this.io.to(this.roomId).emit(SOCKET_EVENTS.DISPLAY_ROLE_SELECTION, ({ playerCount: this.players.length }));
-        // this.io.to(this.roomId).emit(SOCKET_EVENTS.REVEAL_ROLE, ({ roomId: socket.roomId }));
     }
     setPlayerRole(socketId: string, index: number) {
-        const player = this.getPlayer(socketId);
-        const role = this.playerRoles[index];
-        player.setRole(role);
+        console.log('setting Player role');
+        this.selectedRoles.push(index);
 
-        this.io.to(socketId).emit(SOCKET_EVENTS.REVEAL_ROLE, { role });
+        const playerIndex = this.players.findIndex(player => player.getSocketId() === socketId);
+        const player = this.getPlayer(socketId);
+        const playerName = player.getName();
+        const role = this.playerRoles[index];
+
+        let Role = Player;
+        switch (role) {
+            case 'lucky':
+                Role = Lucky;
+                break;
+            case 'pollyanna':
+                Role = Pollyanna;
+                break;
+            case 'sinister':
+                Role = Sinister;
+                break;
+        }
+
+        // update creating new player logic so that we are not creating it for a second time here. :/
+        const newPlayer = new Role(socketId, playerName, this);
+        player.setRole(role);
+        this.players.splice(playerIndex, 1, newPlayer);
+        
+        this.syncLobby();
+    }
+
+
+    /** Sync game server status with the client game status */
+    syncLobby() {
+        this.players.forEach((player) => {
+            const data = {
+                creatorId: this.getCreatorId(),
+                players: this.getPlayers(),
+                selectedRoles: this.selectedRoles,
+                isPlayerReady: player.isReady,
+                role: player.role,
+            };
+            this.io.to(player.getSocketId()).emit(SOCKET_EVENTS.SYNC_LOBBY, data);
+        })
     }
 
 
@@ -460,7 +502,7 @@ class Game extends Bingo {
                     winner = player;
                     break;
                 }
-    
+
                 if (player.getMatches().length === 25) {
                     winner = player;
                     break;
@@ -593,7 +635,7 @@ const socketHandler = (socket: any, io: any) => {
             const players = game.getPlayers();
 
             io.to(socket.id).emit(SOCKET_EVENTS.LOBBY_JOINED);
-            io.to(data.roomId).emit(SOCKET_EVENTS.SYNC_LOBBY, ({ players, creatorId: game.getCreatorId() }));
+            game.syncLobby();
             return;
         }
         io.to(socket.id).emit(SOCKET_EVENTS.LOBBY_FULL);
@@ -608,7 +650,7 @@ const socketHandler = (socket: any, io: any) => {
 
         // set player roles & send clients their roles
         if (game.settings.roles) {
-            game.setPlayerRoles()
+            game.generatePlayerRoles()
         } else {
             // the settings might have been changd in the lobby
             const newSettings: GameSettings = { ...data.settings };
@@ -623,6 +665,7 @@ const socketHandler = (socket: any, io: any) => {
         const game = games[socket.roomId];
         if (game && game.settings.roles) {
             game.setPlayerReady(socket.id);
+            game.syncLobby();
 
             if (game.allPlayersReady()) {
                 // game.startGame();
@@ -653,6 +696,14 @@ const socketHandler = (socket: any, io: any) => {
         }
     });
 
+    socket.on(SOCKET_EVENTS.SELECT_ROLE, (data: { index: number }) => {
+        console.log('in select_role?');
+        const game = games[socket.roomId];
+        if (!game) return;
+
+        game.setPlayerRole(socket.id, data.index);
+    })
+
     // disconnect the socket
     socket.on("disconnect", () => {
         console.log(socket.id, 'disconnected');
@@ -674,8 +725,8 @@ const socketHandler = (socket: any, io: any) => {
                 console.log('everyone disconnected, disbanding the game');
                 delete games[socket.roomId];
             }
-            io.to(socket.roomId).emit(SOCKET_EVENTS.SYNC_LOBBY, { players: game.getPlayers() });
 
+            game.syncLobby();
         }
 
     });

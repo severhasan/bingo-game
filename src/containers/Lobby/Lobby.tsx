@@ -51,6 +51,7 @@ const Lobby = ({ creator }: { creator: boolean }) => {
         setRoleCardCount(count);
     }
     const selectRoleCard = (index: number) => {
+        console.log('client selecting roel:', index);
         socket.emit(SOCKET_EVENTS.SELECT_ROLE, ({ index }));
     }
 
@@ -63,10 +64,6 @@ const Lobby = ({ creator }: { creator: boolean }) => {
         //     socket.send('create-game');
         // }
 
-        setTimeout(() => {
-            setRole('pollyanna');
-        }, 2000)
-
         socket.on(SOCKET_EVENTS.GAME_CREATED, (data: { playerName: string, roomId: string, settings: GameSettings }) => {
             setRoomId(data.roomId);
             // console.log('game-creatd', data);
@@ -77,11 +74,15 @@ const Lobby = ({ creator }: { creator: boolean }) => {
             setSettings(data.settings);
         });
 
-        socket.on(SOCKET_EVENTS.SYNC_LOBBY, (data: { players: string[], creatorId: string, isPlayerReady: boolean }) => {
-            // console.log('update lobby:', data);
+        // SYNC_LOBBY info is sent to players individually
+        socket.on(SOCKET_EVENTS.SYNC_LOBBY, (data: { players: string[], role: PlayerRole, creatorId: string, isPlayerReady: boolean, selectedRoles: number[] }) => {
             setPlayers(data.players);
             setMessage('');
             setPlayerReady(data.isPlayerReady);
+            setSelectedRoles(data.selectedRoles);
+            if (data.role) {
+                setRole(data.role);
+            }
             if (socket.id === data.creatorId) setCreator(true);
             else setCreator(false);
         });
@@ -110,12 +111,17 @@ const Lobby = ({ creator }: { creator: boolean }) => {
             // console.log('starting', data.roomId);
             router.push(`/game/${data.roomId}`);
         });
-        socket.on(SOCKET_EVENTS.REVEAL_ROLE, (data: { role: PlayerRole }) => {
-            // console.log('role', data);
-            setRole(data.role)
-        });
 
-        // return () => { socket.disconnect() };
+        // remove socket listeners.
+        return () => {
+            // cannot remove it all somehow :/
+            socket.off(SOCKET_EVENTS.SYNC_LOBBY, null);
+            socket.off(SOCKET_EVENTS.LOBBY_JOINED, null);
+            socket.off(SOCKET_EVENTS.LOBBY_NOT_FOUND, null);
+            socket.off(SOCKET_EVENTS.LOBBY_FULL, null)
+            socket.off(SOCKET_EVENTS.DISPLAY_ROLE_SELECTION, null)
+            socket.off(SOCKET_EVENTS.START_GAME, null);
+        };
     }, [])
 
     const joinLobby = (roomId: string) => {
@@ -218,17 +224,17 @@ const Lobby = ({ creator }: { creator: boolean }) => {
             }
 
             {
-                // status === 'select_roles'
-                // &&
+                status === 'select_roles'
+                &&
                 <RoleCards
-                    role={'pollyanna'}
+                    role={role}
                     ready={isPlayerReady}
                     selectedRoles={selectedRoles}
-                    count={5}
+                    count={roleCardCount}
                     selectCard={selectRoleCard}
                     setReady={setReady}
                     showRoleInfo={showRoleInfo}
-                    />
+                />
             }
 
             <RoleInfo active={isRoleInfoOpen} close={() => setRoleInfoOpen(false)} />

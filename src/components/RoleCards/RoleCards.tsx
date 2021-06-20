@@ -2,7 +2,7 @@ import { PLAYER_ROLES } from '../../constants';
 import { useState } from 'react';
 
 const RoleCards = ({ role, selectedRoles, count, ready, selectCard, setReady, showRoleInfo }: { role: '' | PlayerRole, selectedRoles: number[], count: number, ready: boolean, selectCard: (index: number) => void, setReady: () => void, showRoleInfo: () => void, }) => {
-    const [selectedCard, setSelectedCard] = useState(0);
+    const [selectedCard, setSelectedCard] = useState(-1);
 
     const handleCardSelect = (index: number) => {
         selectCard(index);
@@ -19,19 +19,20 @@ const RoleCards = ({ role, selectedRoles, count, ready, selectCard, setReady, sh
                         Array.from(Array(count).keys()).map((index) => (
                             <div
                                 key={'role_card_' + index}
-                                onClick={selectedCard >= 0 ? null : () => handleCardSelect(index)}
+                                onClick={selectedRoles.includes(index) || selectedCard >= 0 ? null : () => handleCardSelect(index)}
                                 className={`role-card ${role && selectedCard !== index ? 'hide' : ''} ${role && selectedCard === index ? 'revealed' : ''} ${selectedRoles.includes(index) ? 'selected' : ''}`}
                             >
                                 {
                                     role && selectedCard === index && <h3>Your role is {PLAYER_ROLES[role].displayName}</h3>
                                 }
                                 {
-                                    !role &&
-                                    'PICK ME'
+                                    !role ?
+                                    <span> { selectedRoles.includes(index) ? 'ALREADY PICKED' : 'PICK ME'}</span>
+                                    :
+                                    <div className='show-info button mt-40'>
+                                        <button onClick={showRoleInfo} className='btn'>Show Role Info</button>
+                                    </div>
                                 }
-                                <div className='show-info button mt-40'>
-                                    <button onClick={showRoleInfo} className='btn'>Show Role Info</button>
-                                </div>
                                 {/* {
                                     selectedCard === index ?
                                     role ?
@@ -52,7 +53,7 @@ const RoleCards = ({ role, selectedRoles, count, ready, selectCard, setReady, sh
                     role &&
                     <div className='mt-40'>
                         {
-                        ready ?
+                        !ready ?
                             <>
                             <p>Click ready to start the game.</p>
                             <button onClick={setReady} className='btn game-ready'>Ready</button>

@@ -165,6 +165,14 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
                     break;
             }
         }
+        
+        return () => {
+            setListening(false);
+            // remove listeners
+            socket.off(SOCKET_EVENTS.STATUS_UPDATE, null);
+            socket.off(SOCKET_EVENTS.MATCH_UPDATE, null);
+            socket.off(SOCKET_EVENTS.PLAYER_UPDATE, null);
+        }
 
     }, [status]);
 
