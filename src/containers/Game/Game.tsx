@@ -6,6 +6,7 @@ import { useRouter } from 'next/router'
 import Bingo from '../../utils/Bingo';
 import ScoreBoard from '../ScoreBoard/ScoreBoard';
 import Notification from '../../components/Notification/Notification';
+import SkillCard from '../../components/SkillCard/SkillCard';
 
 
 import { FREE_BINGO_TEXT, SOCKET_EVENTS, COUNTDOWN_TIMEOUT, DEFAULT_GAME_SETTINGS } from '../../constants';
@@ -47,6 +48,8 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
     const [winner, setWinner] = useState(''); // winners' names;
     const [isListening, setListening] = useState(false);
     const [settings, setSettings] = useState(DEFAULT_GAME_SETTINGS as GameSettings);
+    const [role, setRole] = useState('' as PlayerRole);
+    const [skillPoints, setSkillPoints] = useState(0);
     const [notificationActive, setNotificationActive] = useState(false);
     const [score, setScore] = useState(0);
     const [scoreLogs, setScoreLogs] = useState({} as ScoreLogs) // will be only used in score mode
@@ -57,14 +60,18 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
     useEffect(() => {
         if (gameMode === 'multiplayer' && !isListening) {
             // listen to the server & update game status or players
-            socket.on(SOCKET_EVENTS.STATUS_UPDATE, (data: { status: GameStatus, settings?: GameSettings, currentItem?: string, isGameStarting?: boolean, card?: string[], winner?: string, playerName?: string, newBingos?: number[], players: ScoreBoardPlayer[] }) => {
+            socket.on(SOCKET_EVENTS.STATUS_UPDATE, (data: { status: GameStatus, settings?: GameSettings, currentItem?: string, isGameStarting?: boolean, card?: string[], winner?: string, playerName?: string, newBingos?: number[], players: ScoreBoardPlayer[], role?: PlayerRole }) => {
                 if (gameMode === 'multiplayer') {
                     setStatus(data.status);
 
+                    if (data.role) {
+                        setRole(data.role);
+                    }
                     if (data.settings) {
                         setSettings(data.settings);
                     }
                     if (data.players) {
+                        console.log('data players', data.players)
                         setOnlinePlayers(data.players);
                     }
 
@@ -459,17 +466,19 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         });
     }
 
+    // in single-player mode, there will not be Role Play mode
     const generateScoreBoardPlayerInfo = (): ScoreBoardPlayer[] => {
         if (gameMode === 'multiplayer') {
             return onlinePlayers;
         }
 
-        const playerInfo = { name: 'You', score, bingos: Bingo.getBingos(playerCard, matches), matches: matches.map(match => playerCard.indexOf(match)) };
+        const playerInfo = { name: 'You', role: '' as PlayerRole, score, bingos: Bingo.getBingos(playerCard, matches), matches: matches.map(match => playerCard.indexOf(match)) };
         return [
             playerInfo,
             ...players.map(player => ({
                 score: player.score,
                 name: player.name,
+                role: '' as PlayerRole,
                 bingos: player.bingos,
                 matches: player.matches.map(match => player.card.indexOf(match)),
             }
@@ -482,7 +491,9 @@ const Game = ({ gameMode = 'single_player', playerCount = 1 }: GameComponentProp
         <div>
             <Notification active={notificationActive} scoring={settings.scoring} />
 
-            {status !== 'not_started' && <ScoreBoard players={generateScoreBoardPlayerInfo()} newBingos={newBingos} />}
+            { <SkillCard players={onlinePlayers.filter(p => p.name !== playerName)} role={'pollyanna'} skillPoints={skillPoints} /> }
+            {/* { status !== 'not_started' && settings.roles && <SkillCard players={onlinePlayers.filter(p => p.name !== playerName)} role={role} skillPoints={skillPoints} /> } */}
+            {status !== 'not_started' && <ScoreBoard rolesActive={settings.roles} players={generateScoreBoardPlayerInfo()} newBingos={newBingos} />}
 
             {
                 gameMode === 'single_player' && status === 'not_started' ?

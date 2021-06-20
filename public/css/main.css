@@ -24,7 +24,9 @@
     --main-red: rgb(143, 31, 64);
     /* --countdown-color: yellowgreen; */
     --countdown-color: dodgerblue;
-    --transparent-dark: rgba(0, 0, 0, .8);
+    --transparent-dark2: rgba(0, 0, 0, .8);
+    --transparent-dark: rgba(60, 60, 66, .9);
+    ;
 }
 /* darkslateblue, indigo, rebeccapurple, steelblue cadetblue,  coral, firebrik, darkred, */
 /* HTML & Body */
@@ -201,6 +203,22 @@ h2.room-title {
 .game-button.small {
     font-size: 1em;
     padding: 6px;
+}
+.heal-button {
+    background-color: greenyellow;
+    color: black;
+}
+.utility-button {
+    background-color: yellow;
+    color: black;
+}
+.stun-button {
+    background-color: skyblue;
+    color: black;
+}
+.distort-button {
+    color: maroon;
+    color: white;
 }
 
 @media screen and (max-width: 720px) {
@@ -438,6 +456,9 @@ h2.room-title {
 .mr-20 {
     margin-right: 20px;
 }
+.ml-10 {
+    margin-left: 10px;
+}
 .ml-20 {
     margin-left: 20px;
 }
@@ -500,6 +521,9 @@ h2.room-title {
 }
 .text-left {
     text-align: left;
+}
+.float-right {
+    float: right;
 }
 .btn {
     cursor: pointer;

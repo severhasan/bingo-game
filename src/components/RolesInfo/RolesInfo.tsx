@@ -63,7 +63,7 @@ const RolesInfo = ({ active, close }) => {
                             Actives:
                             <ol>
                                 <li>Before the round starts, you can select an item and determine what the next item will be for the next round. You also get the full score if scoring is enabled.</li>
-                                <li>Before the round starts, you can use your skill to use sinister's plans against themselves. The players will not be cursed, but the curse will effect the sinister themselves.</li>
+                                <li>You can use your "Trap" skill to use sinister's plans against themselves. The players will not be cursed, but the curse will effect the sinister themselves.</li>
                             </ol>
                         </li>
                     </ul>

@@ -5,6 +5,7 @@ type PlayerRole = 'pollyanna' | 'sinister' | 'lucky';
 type PlayerCurseInfluence = 'global' | 'individual';
 type PlayerCurseType = 'stun | distort';
 type PlayerLuckType = 'change_next_round_item' | 'dodge_curse' | 'get_more_heal_points';
+type PlayerSkill = 'stun' | 'distort' | 'global_curse' | 'heal_player' | 'heal_self' | 'select_next_round_item' | 'set_trap';
 
 interface BingoTableProps {
     /** Grids will determine the number of grids a table has. This will make the game more customizable */
@@ -99,15 +100,20 @@ interface SettingsProps {
 interface ScoreBoardProps {
     players?: ScoreBoardPlayer[],
     /** indices of the players */
-    newBingos: number[]
-
+    newBingos: number[],
+    rolesActive: boolean,
+    // role: PlayerRole,
+    // skillPoints: number
 }
+
+
 interface ScoreBoardPlayer {
     /** matches holds the indices */
     matches: number[],
     name: string,
     bingos: number,
-    score: number
+    score: number,
+    role: PlayerRole
 }
 
 
@@ -117,4 +123,11 @@ interface GamePlayer {
     card: string[],
     score: number,
     bingos: number
+}
+interface GameTask {
+    /** socket id of the player */
+    player: string,
+    /** socket id of the target player */
+    target: string,
+    skill: PlayerSkill
 }

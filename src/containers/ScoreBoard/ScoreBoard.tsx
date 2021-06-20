@@ -2,8 +2,22 @@ import { useEffect, useState } from 'react';
 import ComputerCard from '../../components/ComputerCard/ComputerCard';
 import classes from './ScoreBoard.module.css';
 
-const ScoreBoard = ({ players, newBingos }: ScoreBoardProps) => {
+const ScoreBoard = ({ newBingos, players, rolesActive }: ScoreBoardProps) => {
     const [open, setOpen] = useState(true);
+
+    const getRoleIcon = (role: PlayerRole) => {
+        switch (role) {
+            case 'lucky':
+                return <img height='16' width='16' src="https://img.icons8.com/android/50/ffffff/clover.png" alt='clover' />
+            case 'pollyanna':
+                return <img height='16' width='16' src="https://img.icons8.com/material/24/ffffff/rod-of-asclepius.png" alt='pollyanna' />
+            case 'sinister':
+                return <img height='16' width='16' src="https://img.icons8.com/android/24/ffffff/evil.png" alt='sinister' />
+            default:
+                return null;
+
+        }
+    }
 
     return (
         <div className={[classes.ScoreBoard, open ? classes.Open : classes.Close].join(' ')}>
@@ -20,7 +34,7 @@ const ScoreBoard = ({ players, newBingos }: ScoreBoardProps) => {
                                 { newBingos.includes(index) && <div className={classes.NewBingo}> New Bingo! </div> }
                                 
                                 <div className='text-center'>
-                                    <h3>{player.name}</h3>
+                                    <h3>{player.name} { rolesActive && <span>{getRoleIcon('sinister')}</span>} </h3>
                                 </div>
                                 <div className='flex space-between'>
                                     <div className={classes.Col}>

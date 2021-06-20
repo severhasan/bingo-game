@@ -35,6 +35,12 @@ export class Player {
     /** scores will keep the track of the scores for each round. Indices will indicate the round of the score */
     scores: number[] = [];
     scoreLogs: ScoreLogs = {};
+    
+    // role based props
+    /** the skill can be used on one person per round */
+    isSkillUsed: boolean = false;
+    isGlobalSkillUsed: boolean = false;
+
 
     constructor(socketId: string, name: string, game?: Game) {
         this.socketId = socketId;
@@ -128,62 +134,57 @@ export class Player {
     }
 
     // if selfheal is used before selecting an item, the player will be able to get more than MAX_SCORE. This is by the game design & player strategy.
-    addScore(score: number) {
-        this.scores.push(score);
-        this.score = this.scores.reduce((acc, score) => acc + score, 0);
+    addScore(score: number, item?: string) {
+        // this.scores.push(score);
+        // this.score = this.scores.reduce((acc, score) => acc + score, 0);
+        if (item) {
+            this.scoreLogs[item].points += score;
+        }
+        this.score += score;
     }
 
     reset(card: string[]) {
         this.card = card;
         this.matches = [];
     }
-}
 
-class Pollyanna extends Player {
-    private heals: PlayerHeal[] = [];
-    role: PlayerRole = 'pollyanna';
 
-    constructor(socketId: string, name: string, game: Game) {
-        super(socketId, name, game);
-    }
-
-    healSelf(round: number) {
-        const currentScore = this.scores[round];
-        const heal: PlayerHeal = { type: 'self', score: 0, round };
-
-        if (currentScore === undefined) {
+    // role based methods
+    healSelf(item: string) {
+        const diff = MAX_SCORE - this.scoreLogs[item].points;
+        if (diff === 0) {
+            this.scoreLogs[item].points += MAX_SCORE;
             this.score += MAX_SCORE;
-            heal.score = MAX_SCORE;
         } else {
-            this.score += MAX_SCORE - currentScore;
-            heal.score = MAX_SCORE - currentScore;
+            this.scoreLogs[item].points = MAX_SCORE;
+            this.score += diff;
         }
-        this.heals.push(heal);
-        this.skillPoints -= 1;
-    }
-    supportFriend(round: number, friendsScore: number) {
-        this.score += friendsScore;
-        this.heals.push({ round, score: friendsScore, type: 'friend' });
-    }
-}
-class Sinister extends Player {
-    private curses: PlayerCurse[] = [];
-    isGlobalSkillUsed: boolean = false;
-    role: PlayerRole = 'sinister';
+        // const currentScore = this.scores[round];
+        // const heal: PlayerHeal = { type: 'self', score: 0, round };
 
-    addCurse(round: number, type: PlayerCurseType, influence: PlayerCurseInfluence) {
+        // if (currentScore === undefined) {
+        //     this.score += MAX_SCORE;
+        //     heal.score = MAX_SCORE;
+        // } else {
+        //     this.score += MAX_SCORE - currentScore;
+        //     heal.score = MAX_SCORE - currentScore;
+        // }
+        // // this.heals.push(heal);
+        // this.skillPoints -= 1;
+        // this.isSkillUsed = true;
+    }
+
+    cursePlayer(round: number, type: PlayerCurseType, influence: PlayerCurseInfluence) {
         if (this.isGlobalSkillUsed && influence === 'global') return;
 
-        this.curses.push({ round, type, influence });
+        // this.curses.push({ round, type, influence });
     }
-}
-class Lucky extends Player {
-    private lucks: PlayerLuck[] = [];
-    role: PlayerRole = 'lucky';
-
-    // additional score may be added on heal :)
-    addLuck(round: number, type: PlayerLuckType, score = 0) {
-        this.lucks.push({ type, round, score });
+    useSkill() {
+        this.isSkillUsed = true;
+        this.skillPoints -= 1;
+    }
+    resetSkillUsed() {
+        this.isSkillUsed = false;
     }
 }
 
@@ -195,12 +196,17 @@ class Game extends Bingo {
     /** the (number/movie) list where the items will be picked from on each round */
     private stack: string[];
     private creatorSocketId: string;
+    tasks: GameTask[] = [];
     /** the io instance of the server */
     io: any;
     round = 0;
     winner: Player;
     status: GameStatus = 'not_started';
     currentItem: string;
+    /** Lucky can decide the fate of the next round */
+    nextRoundItem: string;
+    /** Lucky can set traps for sinisters. Traps will contain the sinisters' socket id */
+    traps: string[] = [];
     /** role types of players. Each player will have one role */
     playerRoles: PlayerRole[] = [];
     /** indices of selectedRoles */
@@ -264,7 +270,7 @@ class Game extends Bingo {
         return this.players.map(player => player.getName());
     }
     getPlayerScores(): ScoreBoardPlayer[] {
-        return this.players.map(player => ({ bingos: player.bingos, matches: player.getMatchesIndices(), name: player.getName(), score: player.score }));
+        return this.players.map(player => ({ bingos: player.bingos, role: player.role, matches: player.getMatchesIndices(), name: player.getName(), score: player.score }));
     }
 
     /** add new player to the game */
@@ -346,31 +352,31 @@ class Game extends Bingo {
     setPlayerRole(socketId: string, index: number) {
         console.log('setting Player role');
         this.selectedRoles.push(index);
-
-        const playerIndex = this.players.findIndex(player => player.getSocketId() === socketId);
+        
         const player = this.getPlayer(socketId);
-        const playerName = player.getName();
         const role = this.playerRoles[index];
+        player.setRole(role);
+        this.syncLobby();
 
-        let Role = Player;
-        switch (role) {
-            case 'lucky':
-                Role = Lucky;
-                break;
-            case 'pollyanna':
-                Role = Pollyanna;
-                break;
-            case 'sinister':
-                Role = Sinister;
-                break;
-        }
+        // const playerIndex = this.players.findIndex(player => player.getSocketId() === socketId);
+        // const playerName = player.getName();
+
+        // let Role = Player;
+        // switch (role) {
+        //     case 'lucky':
+        //         Role = Lucky;
+        //         break;
+        //     case 'pollyanna':
+        //         Role = Pollyanna;
+        //         break;
+        //     case 'sinister':
+        //         Role = Sinister;
+        //         break;
+        // }
 
         // update creating new player logic so that we are not creating it for a second time here. :/
-        const newPlayer = new Role(socketId, playerName, this);
-        player.setRole(role);
-        this.players.splice(playerIndex, 1, newPlayer);
-        
-        this.syncLobby();
+        // const newPlayer = new Role(socketId, playerName, this);
+        // this.players.splice(playerIndex, 1, newPlayer);
     }
 
 
@@ -575,6 +581,55 @@ class Game extends Bingo {
     // FOR TESTING PURPOSES
     setTesting() {
         this.isTesting = true;
+    }
+
+    // role based methods
+    useSkill(socket1: string, socket2: string, skill: PlayerSkill, selectedItem: string) {
+        // this.score += friendsScore;
+        // this.heals.push({ round, score: friendsScore, type: 'friend' });
+        const player = this.players.find(player => player.getSocketId() === socket1);
+        if (!player) return;
+
+        if (player.skillPoints <= 0 || !['drawing_item', 'item_selected'].includes(this.status)) {
+            return;
+        }
+
+        let targetPlayer: Player;
+        if (socket2) {
+            targetPlayer = this.players.find(player => player.getSocketId() === socket2);
+        }
+        
+        switch (skill) {
+            case 'stun':
+            case 'distort':
+            case 'global_curse':
+                if (this.status === 'drawing_item') {
+                    this.tasks.push({player: socket1, target: socket2, skill });
+                }
+                break;
+            case 'heal_self':
+                if (this.status === 'item_selected' && player.scoreLogs[this.currentItem]) {
+                    player.healSelf(this.currentItem);
+                } else {
+                    this.tasks.push({player: socket1, target: socket2, skill });
+                }
+                break;
+            case 'heal_player':
+                if (this.status === 'item_selected' && targetPlayer.scoreLogs[this.currentItem]) {
+                    targetPlayer.healSelf(this.currentItem);
+                    player.addScore(targetPlayer.scoreLogs[this.currentItem].points);
+                } else {
+                    this.tasks.push({player: socket1, target: socket2, skill });
+                }
+                break;
+            case 'select_next_round_item':
+                this.nextRoundItem = selectedItem;
+                break;
+            case 'set_trap':
+                this.traps.push(socket2);
+                break;
+        }
+        player.useSkill();
     }
 }
 
