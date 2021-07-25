@@ -1,3 +1,3 @@
 # bingo-game
 
-[Live Demo](https://sensory-minds-bingo.herokuapp.com)
+[Live Demo](https://sensory-minds-bingov2.herokuapp.com)
